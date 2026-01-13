@@ -117,16 +117,18 @@ function App() {
                     <Route path="/contact" element={<Contact />} />
 
                     {/* Public Shop Routes */}
-                    <Route path="/products" element={<ProductList />} />
-                    <Route path="/category/:category" element={<ProductList />} />
-                    <Route path="/product/:id" element={<ProductDetail />} />
+
                     <Route path="/about" element={<About />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                     <Route path="/terms-conditions" element={<Terms />} />
                     <Route path="/returns" element={<ReturnPolicy />} />
 
+
                     {/* Protected Routes */}
                     <Route element={<ProtectedRoute />}>
+                      <Route path="/products" element={<ProductList />} />
+                      <Route path="/category/:category" element={<ProductList />} />
+                      <Route path="/product/:id" element={<ProductDetail />} />
                       <Route path="/cart" element={<Cart />} />
                       <Route path="/wishlist" element={<Wishlist />} />
                       <Route path="/checkout" element={<Checkout />} />
