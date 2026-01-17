@@ -1,8 +1,15 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, MessageCircle, Sparkles } from 'lucide-react';
 import SpecialOffers from './SpecialOffers';
+
+const carouselImages = [
+    "/saree_model_1.jpg",
+    "/saree_model_2.jpg",
+    "/saree_model_3.jpg",
+    "/saree_model_4.jpg"
+];
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -24,30 +31,17 @@ const itemVariants = {
     }
 };
 
-const floatVariants = {
-    animate: {
-        y: [0, -15, 0],
-        transition: {
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-        }
-    }
-};
-
-const floatReverseVariants = {
-    animate: {
-        y: [0, 15, 0],
-        transition: {
-            duration: 5,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-        }
-    }
-};
 
 const Hero = () => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentImageIndex((prev) => (prev + 1) % carouselImages.length);
+        }, 3500); // Rotate every 3.5 seconds
+        return () => clearInterval(interval);
+    }, []);
+
     return (
         <div className="relative bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 overflow-hidden min-h-[calc(100vh-5rem)] flex flex-col transition-colors duration-300">
             {/* Special Offers Integration for Desktop */}
@@ -70,15 +64,6 @@ const Hero = () => {
                         className="space-y-8"
                     >
 
-
-                        {/* Badge */}
-                        <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900/50 shadow-[0_4px_20px_-10px_rgba(99,102,241,0.4)]">
-                            <span className="relative flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-600 dark:bg-indigo-400"></span>
-                            </span>
-                            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 tracking-wide">New Collection 2025</span>
-                        </motion.div>
 
                         {/* Heading - Word by Word Animation */}
                         <div className="overflow-hidden">
@@ -175,26 +160,41 @@ const Hero = () => {
                         </motion.div>
                     </motion.div>
 
-                    {/* Right Image */}
-                    <div className="relative hidden lg:block perspective-1000">
-                        <motion.div
-                            initial={{ opacity: 0, rotateY: -10, scale: 0.9 }}
-                            animate={{ opacity: 1, rotateY: 0, scale: 1 }}
-                            transition={{ duration: 1, ease: "easeOut" }}
-                            className="relative z-10 w-full aspect-[4/5] rounded-[3rem] overflow-hidden shadow-2xl shadow-indigo-500/20 group"
-                        >
-                            <img
-                                src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80"
-                                alt="Fashion Model"
-                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                            />
+                    {/* Right Image - Carousel with AnimatePresence */}
+                    <div className="relative hidden lg:block perspective-1000 h-[600px] w-full">
+                        <div className="relative w-full h-full rounded-[3rem] overflow-hidden shadow-2xl shadow-indigo-500/20 group bg-slate-200 dark:bg-slate-800">
+                            {carouselImages.map((img, idx) => (
+                                <img
+                                    key={idx}
+                                    src={img}
+                                    onError={(e) => {
+                                        console.error(`Image ${idx} failed to load:`, img);
+                                        e.target.style.backgroundColor = '#ccc'; // Fallback color
+                                    }}
+                                    alt={`Fashion Model ${idx + 1}`}
+                                    className={`absolute inset-0 w-full h-full object-contain transition-all duration-700 ease-in-out transform ${idx === currentImageIndex
+                                        ? 'opacity-100 scale-100 z-10'
+                                        : 'opacity-0 scale-110 z-0'
+                                        }`}
+                                    style={{ backgroundColor: '#1a1a1a' }} // Dark background default
+                                />
+                            ))}
 
-
-                        </motion.div>
+                            {/* Carousel Indicators */}
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+                                {carouselImages.map((_, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setCurrentImageIndex(idx)}
+                                        className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'w-6 bg-white' : 'bg-white/50 hover:bg-white/80'}`}
+                                    />
+                                ))}
+                            </div>
+                        </div>
 
                         {/* Background Glow Element */}
-                        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[3rem] blur-lg opacity-30 -z-10 transform rotate-3 scale-105"></div>
-                        <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[3rem] blur-lg opacity-30 -z-10 transform -rotate-2 scale-105"></div>
+                        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[3rem] blur-lg opacity-30 -z-10 transform rotate-3 scale-105 animate-pulse-slow"></div>
+                        <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[3rem] blur-lg opacity-30 -z-10 transform -rotate-2 scale-105 animate-pulse-slow delay-1000"></div>
                     </div>
                 </div>
             </div>

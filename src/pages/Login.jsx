@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin, useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Loader, Eye, EyeOff } from 'lucide-react';
@@ -13,10 +14,43 @@ const Login = () => {
     const [step, setStep] = useState('login'); // 'login' or '2fa'
     const [otp, setOtp] = useState('');
 
-    const { login, verifyTwoFactorLogin } = useAuth();
+    const { login, verifyTwoFactorLogin, googleLogin } = useAuth();
     const navigate = useNavigate();
 
+    const handleGoogleSuccess = async (response) => {
+        try {
+            setLoading(true);
+            setError('');
+            // When using flow: 'auth-code', the code is in response.code
+            await googleLogin(response.code);
+            navigate('/');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Google login failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleError = () => {
+        setError('Google login failed');
+    };
+
+    // Custom Google Login Hook (Must be at the top level)
+    const loginWithGoogle = useGoogleLogin({
+        onSuccess: async (response) => {
+            try {
+                handleGoogleSuccess(response);
+            } catch (err) {
+                handleGoogleError(err);
+            }
+        },
+        onError: handleGoogleError,
+        flow: 'auth-code',
+        scope: 'email profile https://www.googleapis.com/auth/user.phonenumbers.read https://www.googleapis.com/auth/user.addresses.read'
+    });
+
     const handleSubmit = async (e) => {
+
         e.preventDefault();
         setError('');
         setLoading(true);
@@ -127,6 +161,36 @@ const Login = () => {
                         {!loading && <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />}
                     </button>
                 </form>
+
+                <div className="mt-6">
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-gray-300 dark:border-slate-600"></div>
+                        </div>
+                        <div className="relative flex justify-center text-sm">
+                            <span className="px-2 bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400">Or continue with</span>
+                        </div>
+                    </div>
+
+                    {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+                        <div className="mt-4 flex justify-center">
+                            <button
+                                type="button"
+                                onClick={() => loginWithGoogle()}
+                                className="flex items-center justify-center w-full max-w-xs py-3 px-4 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all gap-3 group"
+                            >
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                                <span className="font-medium text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white">
+                                    Sign in with Google
+                                </span>
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm border border-yellow-200 dark:border-yellow-800 text-center">
+                            Google Sign-In is not configured. Please set VITE_GOOGLE_CLIENT_ID in your .env file.
+                        </div>
+                    )}
+                </div>
 
                 <p className="mt-8 text-center text-gray-600 dark:text-gray-400">
                     Don't have an account? <Link to="/register" className="font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300">Sign Up</Link>
