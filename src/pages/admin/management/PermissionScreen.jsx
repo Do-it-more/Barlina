@@ -152,27 +152,30 @@ const PermissionScreen = () => {
                                     {AVAILABLE_PERMISSIONS.map(perm => {
                                         const isEnabled = admin.permissions?.[perm.key] === true;
                                         const isSuper = admin.role === 'super_admin';
+                                        const isRestricted = perm.key === 'users';
+
                                         return (
                                             <div key={perm.key} className="flex items-center justify-between p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700/50 shadow-sm">
                                                 <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
                                                     {perm.label}
+                                                    {isRestricted && !isSuper && <span className="block text-[9px] text-slate-400">Super Admin Only</span>}
                                                 </span>
                                                 <label className="relative inline-flex items-center cursor-pointer scale-90 origin-right">
                                                     <input
                                                         type="checkbox"
                                                         className="peer sr-only"
-                                                        checked={isSuper || isEnabled}
-                                                        disabled={isSuper}
+                                                        checked={isSuper || (isEnabled && !isRestricted)}
+                                                        disabled={isSuper || isRestricted}
                                                         onChange={() => handlePermissionChange(admin._id, perm.key)}
                                                     />
                                                     <div className={`
                                                         w-9 h-5 rounded-full peer-focus:outline-none transition-all
-                                                        ${isSuper
-                                                            ? 'bg-purple-200 peer-checked:bg-purple-600 opacity-60'
-                                                            : 'bg-slate-200 peer-checked:bg-indigo-600 dark:bg-slate-700'
+                                                        ${(isSuper || (isEnabled && !isRestricted))
+                                                            ? (isSuper ? 'bg-purple-200 peer-checked:bg-purple-600 opacity-60' : 'bg-slate-200 peer-checked:bg-indigo-600 dark:bg-slate-700')
+                                                            : (isRestricted ? 'bg-slate-100 dark:bg-slate-800 opacity-50' : 'bg-slate-200 peer-checked:bg-indigo-600 dark:bg-slate-700')
                                                         }
                                                     `}></div>
-                                                    <div className="absolute left-[2px] top-[2px] bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-full shadow-sm"></div>
+                                                    <div className={`absolute left-[2px] top-[2px] bg-white w-4 h-4 rounded-full transition-transform shadow-sm ${(isSuper || (isEnabled && !isRestricted)) ? 'translate-x-full' : ''}`}></div>
                                                 </label>
                                             </div>
                                         );
@@ -220,6 +223,8 @@ const PermissionScreen = () => {
                                     {AVAILABLE_PERMISSIONS.map(perm => {
                                         const isEnabled = admin.permissions?.[perm.key] === true;
                                         const isSuper = admin.role === 'super_admin';
+                                        // 'users' permission is strictly for Super Admin only
+                                        const isRestricted = perm.key === 'users';
 
                                         return (
                                             <td key={perm.key} className="p-4 text-center">
@@ -227,19 +232,32 @@ const PermissionScreen = () => {
                                                     <input
                                                         type="checkbox"
                                                         className="peer sr-only"
-                                                        checked={isSuper || isEnabled}
-                                                        disabled={isSuper} // Super admins always have all perms
+                                                        // Checked if Super Admin OR (enabled AND not restricted)
+                                                        // Effective result: Only Super Admins show as checked for 'users'
+                                                        checked={isSuper || (isEnabled && !isRestricted)}
+                                                        // Default Disabled if Super Admin
+                                                        // NOW: Also disabled if it is a restricted key
+                                                        disabled={isSuper || isRestricted}
                                                         onChange={() => handlePermissionChange(admin._id, perm.key)}
                                                     />
                                                     <div className={`
                                                         w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 transition-all
-                                                        ${isSuper
-                                                            ? 'bg-purple-200 peer-checked:bg-purple-600 opacity-60 cursor-not-allowed'
-                                                            : 'bg-slate-200 peer-checked:bg-indigo-600 dark:bg-slate-700'
+                                                        ${(isSuper || (isEnabled && !isRestricted))
+                                                            // Checked style (Purple for Super, Indigo for allowed)
+                                                            ? (isSuper ? 'bg-purple-200 peer-checked:bg-purple-600 opacity-60 cursor-not-allowed' : 'bg-slate-200 peer-checked:bg-indigo-600 dark:bg-slate-700')
+                                                            // Unchecked/Disabled style
+                                                            : (isRestricted ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed' : 'bg-slate-200 peer-checked:bg-indigo-600 dark:bg-slate-700')
                                                         }
                                                     `}></div>
-                                                    <div className="absolute left-[2px] top-[2px] bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-full shadow-sm"></div>
+                                                    {/* Knob position */}
+                                                    <div className={`
+                                                        absolute left-[2px] top-[2px] bg-white w-5 h-5 rounded-full transition-transform shadow-sm
+                                                        ${(isSuper || (isEnabled && !isRestricted)) ? 'translate-x-full' : ''}
+                                                    `}></div>
                                                 </label>
+                                                {isRestricted && !isSuper && (
+                                                    <p className="text-[9px] text-slate-400 mt-1">Super Admin Only</p>
+                                                )}
                                             </td>
                                         );
                                     })}

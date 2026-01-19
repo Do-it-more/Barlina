@@ -3,9 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import {
-    ArrowLeft, CheckCircle, XCircle, Truck, Package, Clock,
-    AlertTriangle, FileText, User, MapPin, CreditCard, RotateCcw
+    ArrowLeft, ArrowRight, CheckCircle, XCircle, Truck, Package, Clock,
+    AlertTriangle, FileText, User, MapPin, CreditCard, RotateCcw, Download, Printer, ExternalLink
 } from 'lucide-react';
+import InvoiceModal from '../../components/admin/orders/InvoiceModal';
 
 const OrderDetailScreen = () => {
     const { id } = useParams();
@@ -23,6 +24,7 @@ const OrderDetailScreen = () => {
     // Cancellation Modal
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
+    const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
     const fetchOrderData = async () => {
         try {
@@ -44,6 +46,26 @@ const OrderDetailScreen = () => {
     useEffect(() => {
         fetchOrderData();
     }, [id]);
+
+
+
+    const handleDownloadInvoice = async () => {
+        try {
+            const response = await api.get(`/orders/${id}/invoice`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Invoice-${order.invoiceNumber || order._id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+        } catch (error) {
+            console.error("Download failed", error);
+            showToast("Failed to download invoice", "error");
+        }
+    };
 
     const handleStatusUpdate = async () => {
         if (!newStatus || newStatus === order.status) return;
@@ -110,7 +132,17 @@ const OrderDetailScreen = () => {
                     </Link>
                     <div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Order #{order.invoiceNumber || order._id.slice(-6).toUpperCase()}</h1>
+                            <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                Order #
+                                <Link
+                                    to={`/order/${order._id}`}
+                                    className="hover:text-indigo-600 hover:underline flex items-center gap-1 transition-colors"
+                                    title="View as Customer"
+                                >
+                                    {order.invoiceNumber || order._id.slice(-6).toUpperCase()}
+                                    <ArrowRight className="h-5 w-5 opacity-50" />
+                                </Link>
+                            </h1>
                             <StatusBadge status={order.status} />
                         </div>
                         <p className="text-sm text-slate-500 mt-1">
@@ -120,6 +152,19 @@ const OrderDetailScreen = () => {
                 </div>
 
                 <div className="flex gap-2">
+                    <button
+                        onClick={() => setShowInvoiceModal(true)}
+                        className="px-4 py-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                        <Printer className="h-4 w-4" /> Print / View
+                    </button>
+                    <button
+                        onClick={handleDownloadInvoice}
+                        className="px-4 py-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                        <Download className="h-4 w-4" /> Download PDF
+                    </button>
+
                     {order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && order.status !== 'REFUNDED' && (
                         <button
                             onClick={() => setShowCancelModal(true)}
@@ -130,6 +175,12 @@ const OrderDetailScreen = () => {
                     )}
                 </div>
             </div>
+
+            <InvoiceModal
+                isOpen={showInvoiceModal}
+                onClose={() => setShowInvoiceModal(false)}
+                order={order}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Column */}
@@ -313,39 +364,41 @@ const OrderDetailScreen = () => {
             </div>
 
             {/* Cancel Modal */}
-            {showCancelModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md p-6">
-                        <h3 className="text-xl font-bold text-red-600 mb-2 flex items-center gap-2">
-                            <AlertTriangle className="h-6 w-6" /> Cancel Order
-                        </h3>
-                        <p className="text-slate-600 dark:text-slate-300 mb-4 text-sm">
-                            Are you sure? This will release reserved stock and cannot be undone.
-                        </p>
-                        <textarea
-                            value={cancelReason}
-                            onChange={(e) => setCancelReason(e.target.value)}
-                            placeholder="Reason for cancellation (required)..."
-                            className="w-full border rounded-lg p-3 text-sm h-24 mb-4 dark:bg-slate-700 dark:color-white"
-                        ></textarea>
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={() => setShowCancelModal(false)}
-                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                            >
-                                Close
-                            </button>
-                            <button
-                                onClick={handleCancelOrder}
-                                className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors"
-                            >
-                                Confirm Cancellation
-                            </button>
+            {
+                showCancelModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md p-6">
+                            <h3 className="text-xl font-bold text-red-600 mb-2 flex items-center gap-2">
+                                <AlertTriangle className="h-6 w-6" /> Cancel Order
+                            </h3>
+                            <p className="text-slate-600 dark:text-slate-300 mb-4 text-sm">
+                                Are you sure? This will release reserved stock and cannot be undone.
+                            </p>
+                            <textarea
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                placeholder="Reason for cancellation (required)..."
+                                className="w-full border rounded-lg p-3 text-sm h-24 mb-4 dark:bg-slate-700 dark:color-white"
+                            ></textarea>
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    onClick={() => setShowCancelModal(false)}
+                                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    onClick={handleCancelOrder}
+                                    className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors"
+                                >
+                                    Confirm Cancellation
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

@@ -7,9 +7,16 @@ import {
     User,
     FileText,
     ArrowRight,
-    Filter
+    Filter,
+    Trash2,
+    RotateCcw,
+    Shield,
+    Briefcase,
+    List
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const AdminActivityLogScreen = () => {
     const [logs, setLogs] = useState([]);
@@ -18,28 +25,61 @@ const AdminActivityLogScreen = () => {
     const [pages, setPages] = useState(1);
     const [keyword, setKeyword] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState('all'); // 'all', 'auth', 'work'
+    const { showToast } = useToast();
+    const { confirm } = useConfirm();
+
+    const fetchLogs = async () => {
+        setLoading(true);
+        try {
+            const { data } = await api.get(`/admin/management/activity-logs?pageNumber=${page}&keyword=${keyword}&type=${activeTab}`);
+            setLogs(data.logs);
+            setPages(data.pages);
+        } catch (error) {
+            console.error("Failed to fetch logs:", error);
+            showToast("Failed to fetch activity logs", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchLogs = async () => {
-            setLoading(true);
-            try {
-                const { data } = await api.get(`/admin/management/activity-logs?pageNumber=${page}&keyword=${keyword}`);
-                setLogs(data.logs);
-                setPages(data.pages);
-            } catch (error) {
-                console.error("Failed to fetch logs:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchLogs();
-    }, [page, keyword]);
+    }, [page, keyword, activeTab]);
 
     const handleSearch = (e) => {
         e.preventDefault();
         setKeyword(searchTerm);
         setPage(1);
+    };
+
+    const handleClearAll = async () => {
+        const isConfirmed = await confirm("Clear All Logs", "Are you sure you want to permanently delete ALL activity logs? This action cannot be undone.");
+        if (!isConfirmed) return;
+
+        try {
+            await api.delete('/admin/management/activity-logs');
+            showToast("Activity logs cleared successfully", "success");
+            fetchLogs(); // Refresh
+        } catch (error) {
+            console.error(error);
+            showToast("Failed to clear logs", "error");
+        }
+    };
+
+    const handleDeleteLog = async (id) => {
+        const isConfirmed = await confirm("Delete Log", "Are you sure you want to delete this log entry?");
+        if (!isConfirmed) return;
+
+        try {
+            await api.delete(`/admin/management/activity-logs/${id}`);
+            showToast("Log entry deleted", "success");
+            // Optimistic update
+            setLogs(logs.filter(log => log._id !== id));
+        } catch (error) {
+            console.error(error);
+            showToast("Failed to delete log", "error");
+        }
     };
 
     const getActionColor = (action) => {
@@ -64,16 +104,59 @@ const AdminActivityLogScreen = () => {
                     </p>
                 </div>
 
-                <form onSubmit={handleSearch} className="relative">
-                    <input
-                        type="text"
-                        placeholder="Search by admin name..."
-                        className="pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 w-full md:w-64"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                </form>
+                <div className="flex items-center gap-3">
+                    <form onSubmit={handleSearch} className="relative">
+                        <input
+                            type="text"
+                            placeholder="Search by admin name..."
+                            className="pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 w-full md:w-64"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                    </form>
+
+                    <button
+                        onClick={handleClearAll}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg font-medium transition-colors border border-red-200 dark:border-red-800"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="hidden md:inline">Clear Logs</span>
+                    </button>
+
+                    <button
+                        onClick={fetchLogs}
+                        className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                        title="Refresh"
+                    >
+                        <RotateCcw className="h-5 w-5" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex items-center gap-2">
+                <button
+                    onClick={() => { setActiveTab('all'); setPage(1); }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                >
+                    <List className="h-4 w-4" />
+                    All Logs
+                </button>
+                <button
+                    onClick={() => { setActiveTab('auth'); setPage(1); }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'auth' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                >
+                    <Shield className="h-4 w-4" />
+                    Login/Logout
+                </button>
+                <button
+                    onClick={() => { setActiveTab('work'); setPage(1); }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'work' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                >
+                    <Briefcase className="h-4 w-4" />
+                    Work Activity
+                </button>
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
@@ -85,24 +168,25 @@ const AdminActivityLogScreen = () => {
                                 <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Admin</th>
                                 <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Action</th>
                                 <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Details</th>
+                                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="4" className="p-8 text-center text-gray-500 dark:text-gray-400">
+                                    <td colSpan="5" className="p-8 text-center text-gray-500 dark:text-gray-400">
                                         Loading logs...
                                     </td>
                                 </tr>
                             ) : logs.length === 0 ? (
                                 <tr>
-                                    <td colSpan="4" className="p-8 text-center text-gray-500 dark:text-gray-400">
+                                    <td colSpan="5" className="p-8 text-center text-gray-500 dark:text-gray-400">
                                         No activity logs found.
                                     </td>
                                 </tr>
                             ) : (
                                 logs.map((log) => (
-                                    <tr key={log._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                                    <tr key={log._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors group">
                                         <td className="p-4 whitespace-nowrap">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-medium text-slate-800 dark:text-white flex items-center gap-2">
@@ -148,6 +232,15 @@ const AdminActivityLogScreen = () => {
                                                     </div>
                                                 )}
                                             </div>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <button
+                                                onClick={() => handleDeleteLog(log._id)}
+                                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                title="Delete Log"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))

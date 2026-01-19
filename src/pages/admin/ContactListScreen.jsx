@@ -25,6 +25,8 @@ const ContactListScreen = () => {
 
     useEffect(() => {
         fetchContacts();
+        // Mark notifications as read
+        api.put('/contact/mark-read').catch(err => console.error(err));
     }, []);
 
     const handleDelete = async (id) => {

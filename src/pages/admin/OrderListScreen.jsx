@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import { Eye, Truck, CheckCircle, Clock, Search, FileText, CheckSquare, Square, RotateCcw } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
 
 const OrderListScreen = () => {
     const { showToast } = useToast();
@@ -16,6 +17,7 @@ const OrderListScreen = () => {
     // Bulk Actions State
     const [selectedOrders, setSelectedOrders] = useState([]);
     const [bulkActionLoading, setBulkActionLoading] = useState(false);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, config: {} });
 
     const fetchOrders = async () => {
         try {
@@ -87,9 +89,20 @@ const OrderListScreen = () => {
         );
     };
 
-    const handleBulkStatusUpdate = async (status) => {
-        if (!window.confirm(`Update ${selectedOrders.length} orders to ${status}?`)) return;
+    const initiateBulkUpdate = (status) => {
+        setConfirmModal({
+            isOpen: true,
+            config: {
+                title: 'Confirm Bulk Update',
+                message: `Are you sure you want to update ${selectedOrders.length} orders to ${status}?`,
+                type: 'warning',
+                confirmText: `Yes, Mark as ${status}`,
+                onConfirm: () => executeBulkStatusUpdate(status)
+            }
+        });
+    };
 
+    const executeBulkStatusUpdate = async (status) => {
         setBulkActionLoading(true);
         try {
             await api.post('/orders/bulk-status', {
@@ -100,7 +113,8 @@ const OrderListScreen = () => {
             setSelectedOrders([]);
             fetchOrders();
         } catch (error) {
-            showToast(error.response?.data?.message || "Bulk update failed", "error");
+            console.error("Bulk update error:", error);
+            showToast(error.response?.data?.message || error.message || "Bulk update failed", "error");
         } finally {
             setBulkActionLoading(false);
         }
@@ -194,21 +208,21 @@ const OrderListScreen = () => {
                     <div className="flex gap-2">
                         <button
                             disabled={bulkActionLoading}
-                            onClick={() => handleBulkStatusUpdate('READY_TO_SHIP')}
+                            onClick={() => initiateBulkUpdate('READY_TO_SHIP')}
                             className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded text-sm font-medium transition-colors"
                         >
                             Mark Ready
                         </button>
                         <button
                             disabled={bulkActionLoading}
-                            onClick={() => handleBulkStatusUpdate('SHIPPED')}
+                            onClick={() => initiateBulkUpdate('SHIPPED')}
                             className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded text-sm font-medium transition-colors"
                         >
                             Mark Shipped
                         </button>
                         <button
                             disabled={bulkActionLoading}
-                            onClick={() => handleBulkStatusUpdate('DELIVERED')}
+                            onClick={() => initiateBulkUpdate('DELIVERED')}
                             className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded text-sm font-medium transition-colors"
                         >
                             Mark Delivered
@@ -354,7 +368,17 @@ const OrderListScreen = () => {
                     ))
                 )}
             </div>
-        </div >
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.config?.onConfirm}
+                title={confirmModal.config?.title}
+                message={confirmModal.config?.message}
+                type={confirmModal.config?.type || 'warning'}
+                confirmText={confirmModal.config?.confirmText}
+            />
+        </div>
     );
 };
 

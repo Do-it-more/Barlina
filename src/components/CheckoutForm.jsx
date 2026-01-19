@@ -89,9 +89,11 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
 
         setLoading(true);
         setError(null);
+        let orderId = null;
 
         try {
             const createdOrder = await createOrder('Stripe');
+            orderId = createdOrder._id;
 
             // Amount in cents
             const amountInCents = Math.round(createdOrder.totalPrice * 100);
@@ -107,7 +109,7 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
                             line1: shippingAddress.address,
                             city: shippingAddress.city,
                             postal_code: shippingAddress.postalCode,
-                            country: 'US',
+                            country: 'US', // Or map from shippingAddress.country if available/standardized
                         }
                     }
                 }
@@ -123,6 +125,17 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
 
         } catch (err) {
             console.error("Payment failed", err);
+
+            // If order was created but payment failed, cancel order to restore stock
+            if (orderId) {
+                try {
+                    console.log("Cancelling failed order to restore stock...", orderId);
+                    await api.put(`/orders/${orderId}/cancel`, { reason: 'Payment Failed' });
+                } catch (cancelErr) {
+                    console.error("Failed to cancel failed order:", cancelErr);
+                }
+            }
+
             const msg = err.response?.data?.message || err.message || "Payment failed";
             setError(msg);
             showToast(msg, "error");

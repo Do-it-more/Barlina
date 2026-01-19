@@ -39,6 +39,42 @@ const ProductListScreen = () => {
 
     const [globalCodEnabled, setGlobalCodEnabled] = useState(true);
 
+    // Stock Editing State
+    const [editingStockId, setEditingStockId] = useState(null);
+    const [tempStockValue, setTempStockValue] = useState('');
+
+    const startEditingStock = (product) => {
+        setEditingStockId(product._id);
+        setTempStockValue(product.countInStock);
+    };
+
+    const saveStock = async (product) => {
+        const newStock = parseInt(tempStockValue);
+        if (isNaN(newStock) || newStock < 0) {
+            showToast('Invalid stock value', 'error');
+            setEditingStockId(null);
+            return;
+        }
+
+        if (newStock === product.countInStock) {
+            setEditingStockId(null);
+            return;
+        }
+
+        const oldProducts = [...products];
+        // Optimistic Update
+        setProducts(products.map(p => p._id === product._id ? { ...p, countInStock: newStock } : p));
+        setEditingStockId(null);
+
+        try {
+            await api.put(`/products/${product._id}`, { countInStock: newStock });
+            showToast('Stock updated successfully', 'success');
+        } catch (error) {
+            setProducts(oldProducts);
+            showToast('Failed to update stock', 'error');
+        }
+    };
+
     const fetchSettings = async () => {
         try {
             const { data } = await api.get('/settings');
@@ -248,12 +284,29 @@ const ProductListScreen = () => {
                                         </button>
                                     </td>
                                     <td className="p-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${product.countInStock > 0
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                            }`}>
-                                            {product.countInStock > 0 ? `${product.countInStock} in stock` : 'Out of Stock'}
-                                        </span>
+                                        {editingStockId === product._id ? (
+                                            <input
+                                                type="number"
+                                                autoFocus
+                                                min="0"
+                                                value={tempStockValue}
+                                                onChange={(e) => setTempStockValue(e.target.value)}
+                                                onBlur={() => saveStock(product)}
+                                                onKeyDown={(e) => e.key === 'Enter' && saveStock(product)}
+                                                className="w-20 px-2 py-1 text-sm border border-indigo-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                                            />
+                                        ) : (
+                                            <span
+                                                onClick={() => product.isStockEnabled !== false && startEditingStock(product)}
+                                                className={`px-3 py-1 rounded-full text-xs font-bold select-none ${product.isStockEnabled === false ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 cursor-default' : 'cursor-pointer hover:opacity-80 transition-opacity'} ${product.isStockEnabled !== false && product.countInStock > 0
+                                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                    : product.isStockEnabled !== false ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : ''
+                                                    }`}
+                                                title={product.isStockEnabled === false ? "Stock tracking disabled" : "Click to edit stock"}
+                                            >
+                                                {product.isStockEnabled === false ? 'Unlimited' : product.countInStock > 0 ? `${product.countInStock} in stock` : 'Out of Stock'}
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
@@ -319,12 +372,32 @@ const ProductListScreen = () => {
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
-                                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${product.countInStock > 0
-                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                        }`}>
-                                        {product.countInStock > 0 ? `${product.countInStock} Stock` : 'No Stock'}
-                                    </span>
+                                    {editingStockId === product._id ? (
+                                        <input
+                                            type="number"
+                                            autoFocus
+                                            min="0"
+                                            value={tempStockValue}
+                                            onChange={(e) => setTempStockValue(e.target.value)}
+                                            onBlur={() => saveStock(product)}
+                                            onKeyDown={(e) => e.key === 'Enter' && saveStock(product)}
+                                            className="w-16 px-2 py-1 text-[10px] border border-indigo-500 rounded bg-white text-slate-900"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <span
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (product.isStockEnabled !== false) startEditingStock(product);
+                                            }}
+                                            className={`px-2 py-1 rounded-full text-[10px] font-bold ${product.isStockEnabled === false ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 cursor-default' : 'cursor-pointer'} ${product.isStockEnabled !== false && product.countInStock > 0
+                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                : product.isStockEnabled !== false ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : ''
+                                                }`}
+                                        >
+                                            {product.isStockEnabled === false ? 'Unlimited' : product.countInStock > 0 ? `${product.countInStock} Stock` : 'No Stock'}
+                                        </span>
+                                    )}
                                     <div className="flex items-center gap-1.5 mt-1">
                                         <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">COD</span>
                                         <button
@@ -359,7 +432,7 @@ const ProductListScreen = () => {
                     </div>
                 ))}
             </div>
-        </div>
+        </div >
     );
 };
 

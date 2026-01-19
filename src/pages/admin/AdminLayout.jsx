@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
     Package,
@@ -15,6 +15,7 @@ import {
     AlertCircle,
     Tag,
     MessageSquare,
+    MessagesSquare,
     Settings,
     RotateCcw,
     CheckSquare,
@@ -28,14 +29,17 @@ import {
     PanelLeftOpen,
     Activity
 } from 'lucide-react';
+import api from '../../services/api';
+
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import AdminChatWidget from '../../components/admin/AdminChatWidget';
+import { useAdminChat } from '../../context/AdminChatContext';
 
-
-const AdminLayout = () => {
+const AdminLayoutContent = () => {
     const { logout, user } = useAuth();
     const { theme, toggleTheme } = useTheme();
+    const { hasUnreadMessages, getTotalUnreadCount } = useAdminChat();
+
 
     // Force Password Change Check
     if (user?.role === 'admin' && user?.isFirstLogin) {
@@ -47,7 +51,41 @@ const AdminLayout = () => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [globalSearch, setGlobalSearch] = useState('');
     const [searchType, setSearchType] = useState('user'); // 'user', 'order', 'complaint'
-    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [imageError, setImageError] = useState(false);
+    const [counts, setCounts] = useState({ complaints: 0, inquiries: 0 });
+
+    useEffect(() => {
+        const fetchCounts = async () => {
+            try {
+                const { data } = await api.get('/reports/dashboard');
+                setCounts({
+                    complaints: data.openComplaintsCount || 0,
+                    inquiries: data.newInquiriesCount || 0
+                });
+            } catch (error) {
+                console.error("Failed to fetch notification counts", error);
+            }
+        };
+
+        if (user) {
+            fetchCounts();
+            // Poll every 30 seconds for updates
+            const interval = setInterval(fetchCounts, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [user]);
+
+    const getNotificationCount = (path) => {
+        if (path === '/admin/complaints') return counts.complaints;
+        if (path === '/admin/contacts') return counts.inquiries;
+        return 0;
+    };
+
+    // ... (rest of search/logic untouched)
+
+    useEffect(() => {
+        setImageError(false);
+    }, [user?.profilePhoto]);
 
     const handleGlobalSearch = (e) => {
         e.preventDefault();
@@ -66,9 +104,10 @@ const AdminLayout = () => {
         }
 
         // Don't clear search immediately so user sees what they typed
-        // setGlobalSearch(''); 
+        // setGlobalSearch('');
     };
 
+    // ... (Permissions Logic)
     const isSuperAdmin = user?.role === 'super_admin';
 
     const baseNavItems = [
@@ -78,6 +117,9 @@ const AdminLayout = () => {
         { path: '/admin/products', icon: Package, label: 'Products' },
         { path: '/admin/categories', icon: List, label: 'Categories' },
     ];
+
+    // Team Chat - Always at the end, accessible to all admins
+    const teamChatItem = { path: '/admin/team-chat', icon: MessagesSquare, label: 'Team Chat' };
 
     const adminOnlyItems = [
         { path: '/admin/users', icon: Users, label: 'Users' },
@@ -107,30 +149,21 @@ const AdminLayout = () => {
 
     const hasPermission = (item) => {
         if (isSuperAdmin) return true;
-
-        // Dashboard is valid for all admins
         if (item.path === '/admin/dashboard') return true;
-
-        // Users is strictly Super Admin only (double check)
+        if (item.path === '/admin/team-chat') return true; // Team Chat accessible to all admins
         if (item.path === '/admin/users') return false;
-
-        // Check explicit permission
         const requiredPerm = permissionMap[item.path];
-
-        // If it's in the map, check the permission bit
         if (requiredPerm) {
             return user?.permissions?.[requiredPerm] === true;
         }
-
-        // If not in map and not Dashboard/SuperAdmin stuff, hide it to be safe
-        // This ensures "what I give is what shows" strictly.
         return false;
     };
 
     const navItems = [
         ...baseNavItems,
         ...adminOnlyItems,
-        ...(isSuperAdmin ? superAdminItems : [])
+        ...(isSuperAdmin ? superAdminItems : []),
+        teamChatItem // Team Chat always at the end
     ].filter(hasPermission);
 
     // Bottom Nav Items (Priority) - Filter these too
@@ -141,25 +174,106 @@ const AdminLayout = () => {
         { path: '/admin/complaints', icon: AlertCircle, label: 'Complaints' },
     ].filter(hasPermission);
 
+
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-slate-900 flex relative">
-            {/* Mobile Sidebar Overlay */}
-            {isMobileMenuOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                />
-            )}
+            {/* Mobile Menu Bottom Sheet */}
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <motion.div
+                        key="mobile-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 z-[60] md:hidden backdrop-blur-sm"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                    />
+                )}
+                {isMobileMenuOpen && (
+                    <motion.div
+                        key="mobile-menu"
+                        initial={{ y: "100%" }}
+                        animate={{ y: 0 }}
+                        exit={{ y: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        className="fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 rounded-t-3xl max-h-[85vh] flex flex-col shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border-t border-gray-100 dark:border-slate-800 md:hidden"
+                    >
+                        <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
+                            <h2 className="text-lg font-bold text-slate-800 dark:text-white">Menu</h2>
+                            <button
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="p-2 bg-gray-100 dark:bg-slate-800 rounded-full"
+                            >
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4">
+                            <div className="grid grid-cols-3 gap-3">
+                                {navItems.map((item) => {
+                                    const isActive = location.pathname.startsWith(item.path);
+                                    return (
+                                        <Link
+                                            key={item.path}
+                                            to={item.path}
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                            className={`relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${isActive
+                                                ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800'
+                                                : 'bg-white border-gray-100 dark:bg-slate-800 dark:border-slate-700'
+                                                }`}
+                                        >
+                                            <item.icon className={`h-6 w-6 mb-2 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`} />
+                                            <span className={`text-[10px] font-medium text-center leading-tight ${isActive ? 'text-indigo-900 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-400'}`}>
+                                                {item.label}
+                                            </span>
+                                            {/* Regular notification count badge */}
+                                            {getNotificationCount(item.path) > 0 && (
+                                                <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-slate-900">
+                                                    {getNotificationCount(item.path) > 99 ? '99+' : getNotificationCount(item.path)}
+                                                </span>
+                                            )}
+                                            {/* Team Chat green notification badge with count */}
+                                            {item.path === '/admin/team-chat' && getTotalUnreadCount() > 0 && !isActive && (
+                                                <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-slate-900 animate-pulse">
+                                                    {getTotalUnreadCount() > 9 ? '9+' : getTotalUnreadCount()}
+                                                </span>
+                                            )}
+                                        </Link>
+                                    )
+                                })}
+                            </div>
+
+                            <div className="mt-6 space-y-3 pb-6">
+                                {/* Switch to Shop & Logout */}
+                                <Link
+                                    to="/"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-gray-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400 font-medium text-sm"
+                                >
+                                    <Home className="h-5 w-5" /> Switch to Shop
+                                </Link>
+                                <button
+                                    onClick={() => { logout(); setIsMobileMenuOpen(false); }}
+                                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-50 text-red-600 dark:bg-red-900/10 dark:text-red-400 font-medium text-sm"
+                                >
+                                    <LogOut className="h-5 w-5" /> Logout
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Desktop & Mobile Sidebar */}
             <aside
                 className={`
-                    fixed inset-y-0 left-0 z-50 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 
-                    transition-all duration-300 flex flex-col
-                    ${isSidebarCollapsed ? 'md:w-20' : 'md:w-64'} w-64
-                    ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
+                    hidden md:flex flex-col 
+                    fixed inset-y-0 left-0 z-50 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800
+                    transition-all duration-300
+                    ${isSidebarCollapsed ? 'w-20' : 'w-64'}
                 `}
             >
+                {/* ... Header logic same as before ... */}
                 <div className={`flex items-center ${isSidebarCollapsed ? 'md:justify-center justify-between' : 'justify-between'} px-6 h-16 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 transition-all duration-300`}>
 
                     {(!isSidebarCollapsed || isMobileMenuOpen) && (
@@ -175,7 +289,6 @@ const AdminLayout = () => {
                         )
                     )}
 
-                    {/* Desktop Collapse Button */}
                     <button
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                         className="hidden md:block p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-colors"
@@ -183,7 +296,6 @@ const AdminLayout = () => {
                         {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
                     </button>
 
-                    {/* Mobile Close Button */}
                     <button
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="md:hidden p-1.5 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
@@ -203,7 +315,7 @@ const AdminLayout = () => {
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 title={isSidebarCollapsed ? item.label : ''}
                                 className={`
-                                    flex items-center ${isSidebarCollapsed ? 'md:justify-center px-0' : 'justify-start px-4'} py-3 rounded-xl transition-all duration-300 group
+                                    relative flex items-center ${isSidebarCollapsed ? 'md:justify-center px-0' : 'justify-start px-4'} py-3 rounded-xl transition-all duration-300 group
                                     ${isActive
                                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
                                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-white'
@@ -212,30 +324,39 @@ const AdminLayout = () => {
                             >
                                 <Icon className={`h-5 w-5 min-w-[20px] ${!isActive && 'group-hover:scale-110 transition-transform'}`} />
                                 {(!isSidebarCollapsed || isMobileMenuOpen) && (
-                                    <span className="font-medium ml-3 whitespace-nowrap opacity-100 transition-opacity duration-300">
+                                    <span className="font-medium ml-3 whitespace-nowrap opacity-100 transition-opacity duration-300 flex-1">
                                         {item.label}
                                     </span>
+                                )}
+                                {/* Regular notification count badge */}
+                                {(!isSidebarCollapsed || isMobileMenuOpen) && getNotificationCount(item.path) > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold shadow-sm">
+                                        {getNotificationCount(item.path) > 99 ? '99+' : getNotificationCount(item.path)}
+                                    </span>
+                                )}
+                                {(isSidebarCollapsed && !isMobileMenuOpen) && getNotificationCount(item.path) > 0 && (
+                                    <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900"></span>
+                                )}
+                                {/* Team Chat green notification badge with count */}
+                                {item.path === '/admin/team-chat' && getTotalUnreadCount() > 0 && !isActive && (
+                                    (!isSidebarCollapsed || isMobileMenuOpen) ? (
+                                        <span className="px-2 py-0.5 rounded-full bg-green-500 text-white text-[10px] font-bold shadow-sm animate-pulse">
+                                            {getTotalUnreadCount() > 99 ? '99+' : getTotalUnreadCount()}
+                                        </span>
+                                    ) : (
+                                        <span className="absolute top-2 right-2 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-green-500 text-white text-[9px] font-bold ring-2 ring-white dark:ring-slate-900 animate-pulse">
+                                            {getTotalUnreadCount() > 9 ? '9+' : getTotalUnreadCount()}
+                                        </span>
+                                    )
                                 )}
                             </Link>
                         );
                     })}
 
-                    <button
-                        onClick={() => { setIsChatOpen(true); setIsMobileMenuOpen(false); }}
-                        title={isSidebarCollapsed ? 'Team Chat' : ''}
-                        className={`
-                            w-full flex items-center ${isSidebarCollapsed ? 'md:justify-center px-0' : 'justify-start px-4'} py-3 rounded-xl transition-all duration-300
-                            ${isChatOpen
-                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-white'
-                            }
-                        `}
-                    >
-                        <MessageSquare className="h-5 w-5 min-w-[20px]" />
-                        {(!isSidebarCollapsed || isMobileMenuOpen) && <span className="font-medium ml-3 whitespace-nowrap">Team Chat</span>}
-                    </button>
+
 
                     <div className="pt-4 mt-4 border-t border-gray-200 dark:border-slate-800">
+                        {/* ... logout/switch buttons ... */}
                         <Link
                             to="/"
                             onClick={() => setIsMobileMenuOpen(false)}
@@ -258,7 +379,7 @@ const AdminLayout = () => {
                 </nav>
             </aside>
 
-            {/* Main Content */}
+            {/* ... Main Content ... */}
             <div className={`flex-1 flex flex-col min-w-0 ${isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64'} transition-all duration-300`}>
                 <header className="sticky top-0 z-40 bg-white dark:bg-slate-800 shadow-sm h-16 flex items-center px-6">
                     <button
@@ -311,8 +432,13 @@ const AdminLayout = () => {
 
                     <Link to="/profile" className="flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 p-2 rounded-lg transition-colors group">
                         <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-slate-700 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold overflow-hidden border border-transparent group-hover:border-indigo-200 dark:group-hover:border-indigo-800 transition-colors">
-                            {user?.profilePhoto ? (
-                                <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
+                            {user?.profilePhoto && !imageError ? (
+                                <img
+                                    src={user.profilePhoto}
+                                    alt={user.name}
+                                    className="w-full h-full object-cover"
+                                    onError={() => setImageError(true)}
+                                />
                             ) : (
                                 user?.name?.charAt(0) || 'A'
                             )}
@@ -329,7 +455,6 @@ const AdminLayout = () => {
                 </main>
             </div>
 
-            {/* Mobile Bottom Navigation - Animated */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm border-t border-gray-100 dark:border-slate-800">
                 <div className="flex justify-around items-center h-16 px-2">
                     {bottomNavItems.map((item) => {
@@ -356,6 +481,9 @@ const AdminLayout = () => {
                                             }`}
                                         strokeWidth={isActive ? 2.5 : 2}
                                     />
+                                    {getNotificationCount(item.path) > 0 && (
+                                        <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900"></span>
+                                    )}
                                 </div>
                                 <span className={`text-[10px] font-medium transition-colors duration-200 ${isActive
                                     ? 'text-indigo-600 dark:text-indigo-400'
@@ -378,10 +506,18 @@ const AdminLayout = () => {
                 </div>
             </div>
 
-            {/* Mobile Full Menu Overlay */}
-            <AdminChatWidget isOpen={isChatOpen} setIsOpen={setIsChatOpen} />
         </div >
     );
 };
 
+import { AdminChatProvider } from '../../context/AdminChatContext';
+import AdminChatWidget from '../../components/admin/AdminChatWidget';
+
+const AdminLayout = () => {
+    return (
+        <AdminChatProvider>
+            <AdminLayoutContent />
+        </AdminChatProvider>
+    );
+};
 export default AdminLayout;

@@ -13,8 +13,14 @@ const ProfileDropdown = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [newName, setNewName] = useState(user?.name || '');
     const [uploading, setUploading] = useState(false);
+    const [imageError, setImageError] = useState(false);
     const fileInputRef = useRef(null);
     const dropdownRef = useRef(null);
+
+    // Reset error when user photo changes
+    useEffect(() => {
+        setImageError(false);
+    }, [user?.profilePhoto]);
 
     // Close on click outside
     useEffect(() => {
@@ -95,8 +101,13 @@ const ProfileDropdown = () => {
                 aria-label="User menu"
             >
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-slate-600 top-trigger">
-                    {user.profilePhoto ? (
-                        <img src={getProfileImg()} alt={user.name} className="w-full h-full object-cover" />
+                    {user.profilePhoto && !imageError ? (
+                        <img
+                            src={getProfileImg()}
+                            alt={user.name}
+                            className="w-full h-full object-cover"
+                            onError={() => setImageError(true)}
+                        />
                     ) : (
                         <span className="text-indigo-600 dark:text-indigo-400 font-bold text-sm md:text-base">{user.name.charAt(0).toUpperCase()}</span>
                     )}
@@ -126,8 +137,13 @@ const ProfileDropdown = () => {
                             <div className="p-6 text-center border-b border-gray-50 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-700/30">
                                 <div className="relative inline-block">
                                     <div className="w-20 h-20 mx-auto rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-600 shadow-md relative group">
-                                        {user.profilePhoto ? (
-                                            <img src={getProfileImg()} alt={user.name} className="w-full h-full object-cover" />
+                                        {user.profilePhoto && !imageError ? (
+                                            <img
+                                                src={getProfileImg()}
+                                                alt={user.name}
+                                                className="w-full h-full object-cover"
+                                                onError={() => setImageError(true)}
+                                            />
                                         ) : (
                                             <span className="text-indigo-600 dark:text-indigo-400 font-bold text-3xl">{user.name.charAt(0).toUpperCase()}</span>
                                         )}

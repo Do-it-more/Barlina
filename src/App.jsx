@@ -26,28 +26,29 @@ import NotFound from './pages/NotFound';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import ReturnPolicy from './pages/ReturnPolicy';
-import AdminLayout from './pages/admin/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import ProductListScreen from './pages/admin/ProductListScreen';
-import ProductEditScreen from './pages/admin/ProductEditScreen';
-import OrderListScreen from './pages/admin/OrderListScreen';
-import OrderDetailScreen from './pages/admin/OrderDetailScreen';
-import UserListScreen from './pages/admin/UserListScreen';
-import UserDetailScreen from './pages/admin/UserDetailScreen';
-import AdminCreateScreen from './pages/admin/AdminCreateScreen';
-import CategoryListScreen from './pages/admin/CategoryListScreen';
-import CategoryEditScreen from './pages/admin/CategoryEditScreen';
-import ComplaintListScreen from './pages/admin/ComplaintListScreen';
-import ComplaintDetailScreen from './pages/admin/ComplaintDetailScreen';
-import CouponListScreen from './pages/admin/CouponListScreen';
-import ContactListScreen from './pages/admin/ContactListScreen';
-import ReturnListScreen from './pages/admin/ReturnListScreen';
-import SettingsScreen from './pages/admin/SettingsScreen';
-import AdminChangePassword from './pages/admin/AdminChangePassword';
-// Import New Management Screens
-import PermissionScreen from './pages/admin/management/PermissionScreen';
-import ApprovalScreen from './pages/admin/management/ApprovalScreen';
-import AdminActivityLogScreen from './pages/admin/AdminActivityLogScreen';
+// Lazy Load Admin Pages for Performance
+const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout'));
+const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
+const ProductListScreen = React.lazy(() => import('./pages/admin/ProductListScreen'));
+const ProductEditScreen = React.lazy(() => import('./pages/admin/ProductEditScreen'));
+const OrderListScreen = React.lazy(() => import('./pages/admin/OrderListScreen'));
+const OrderDetailScreen = React.lazy(() => import('./pages/admin/OrderDetailScreen'));
+const UserListScreen = React.lazy(() => import('./pages/admin/UserListScreen'));
+const UserDetailScreen = React.lazy(() => import('./pages/admin/UserDetailScreen'));
+const AdminCreateScreen = React.lazy(() => import('./pages/admin/AdminCreateScreen'));
+const CategoryListScreen = React.lazy(() => import('./pages/admin/CategoryListScreen'));
+const CategoryEditScreen = React.lazy(() => import('./pages/admin/CategoryEditScreen'));
+const ComplaintListScreen = React.lazy(() => import('./pages/admin/ComplaintListScreen'));
+const ComplaintDetailScreen = React.lazy(() => import('./pages/admin/ComplaintDetailScreen'));
+const CouponListScreen = React.lazy(() => import('./pages/admin/CouponListScreen'));
+const ContactListScreen = React.lazy(() => import('./pages/admin/ContactListScreen'));
+const ReturnListScreen = React.lazy(() => import('./pages/admin/ReturnListScreen'));
+const SettingsScreen = React.lazy(() => import('./pages/admin/SettingsScreen'));
+const AdminChangePassword = React.lazy(() => import('./pages/admin/AdminChangePassword'));
+const PermissionScreen = React.lazy(() => import('./pages/admin/management/PermissionScreen'));
+const ApprovalScreen = React.lazy(() => import('./pages/admin/management/ApprovalScreen'));
+const AdminActivityLogScreen = React.lazy(() => import('./pages/admin/AdminActivityLogScreen'));
+const TeamChatScreen = React.lazy(() => import('./pages/admin/TeamChatScreen'));
 import ChatBot from './components/ChatBot';
 import MobileBottomNav from './components/MobileBottomNav';
 
@@ -138,8 +139,15 @@ function App() {
                     </Route>
                     {/* Admin Routes */}
                     <Route element={<ProtectedRoute adminOnly={true} />}>
-                      <Route path="/admin/change-password" element={<AdminChangePassword />} />
-                      <Route path="/admin" element={<AdminLayout />}>
+                      <Route path="/admin" element={
+                        <React.Suspense fallback={
+                          <div className="flex h-screen items-center justify-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                          </div>
+                        }>
+                          <AdminLayout />
+                        </React.Suspense>
+                      }>
                         <Route index element={<AdminDashboard />} />
                         <Route path="dashboard" element={<AdminDashboard />} />
                         <Route path="products" element={<ProductListScreen />} />
@@ -163,8 +171,13 @@ function App() {
                         <Route path="management/permissions" element={<PermissionScreen />} />
                         <Route path="management/approvals" element={<ApprovalScreen />} />
                         <Route path="management/activity" element={<AdminActivityLogScreen />} />
-
+                        <Route path="team-chat" element={<TeamChatScreen />} />
                       </Route>
+                      <Route path="/admin/change-password" element={
+                        <React.Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
+                          <AdminChangePassword />
+                        </React.Suspense>
+                      } />
                     </Route>
 
                     {/* Catch All - 404 */}

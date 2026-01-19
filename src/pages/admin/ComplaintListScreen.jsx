@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Eye, Edit, Trash2, CheckCircle, AlertCircle, Clock, Search, Filter } from 'lucide-react';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const ComplaintListScreen = () => {
     const [complaints, setComplaints] = useState([]);
@@ -10,19 +13,38 @@ const ComplaintListScreen = () => {
     const [searchParams] = useSearchParams();
     const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
 
+    const { user } = useAuth();
+    const { showToast } = useToast();
+    const { confirm } = useConfirm();
+
+    const fetchComplaints = async () => {
+        try {
+            const { data } = await api.get('/complaints');
+            setComplaints(data);
+        } catch (error) {
+            console.error("Failed to fetch complaints", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchComplaints = async () => {
-            try {
-                const { data } = await api.get('/complaints');
-                setComplaints(data);
-            } catch (error) {
-                console.error("Failed to fetch complaints", error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchComplaints();
+        // Mark notifications as viewed
+        api.put('/complaints/mark-viewed').catch(err => console.error(err));
     }, []);
+
+    const handleDelete = async (id) => {
+        if (await confirm('Delete Complaint', 'Are you sure you want to delete this complaint? This action cannot be undone.')) {
+            try {
+                await api.delete(`/complaints/${id}`);
+                showToast('Complaint deleted successfully', 'success');
+                fetchComplaints();
+            } catch (error) {
+                showToast(error.response?.data?.message || 'Failed to delete complaint', 'error');
+            }
+        }
+    };
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -112,12 +134,24 @@ const ComplaintListScreen = () => {
                                             </div>
                                         </div>
 
-                                        <Link
-                                            to={`/admin/complaints/${complaint._id}`}
-                                            className="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm shadow-sm shadow-indigo-200 dark:shadow-none"
-                                        >
-                                            <Eye className="h-4 w-4" /> View Details
-                                        </Link>
+                                        <div className="flex gap-2">
+                                            <Link
+                                                to={`/admin/complaints/${complaint._id}`}
+                                                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm shadow-sm shadow-indigo-200 dark:shadow-none"
+                                            >
+                                                <Eye className="h-4 w-4" /> View Details
+                                            </Link>
+
+                                            {user?.role === 'super_admin' && complaint.status === 'Closed' && (
+                                                <button
+                                                    onClick={() => handleDelete(complaint._id)}
+                                                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+                                                    title="Delete Complaint"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ))
                             ) : (
@@ -167,12 +201,25 @@ const ComplaintListScreen = () => {
                                                     </span>
                                                 </td>
                                                 <td className="p-4 text-right">
-                                                    <Link
-                                                        to={`/admin/complaints/${complaint._id}`}
-                                                        className="inline-flex p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Link>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Link
+                                                            to={`/admin/complaints/${complaint._id}`}
+                                                            className="inline-flex p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
+                                                            title="View Details"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Link>
+
+                                                        {user?.role === 'super_admin' && complaint.status === 'Closed' && (
+                                                            <button
+                                                                onClick={() => handleDelete(complaint._id)}
+                                                                className="inline-flex p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                                                                title="Delete Complaint"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))

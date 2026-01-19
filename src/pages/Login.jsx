@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin, useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
@@ -14,8 +14,36 @@ const Login = () => {
     const [step, setStep] = useState('login'); // 'login' or '2fa'
     const [otp, setOtp] = useState('');
 
-    const { login, verifyTwoFactorLogin, googleLogin } = useAuth();
+    const [resendTimer, setResendTimer] = useState(30);
+
+    const { login, verifyTwoFactorLogin, googleLogin, resendTwoFactorLogin } = useAuth();
     const navigate = useNavigate();
+
+    // Timer Effect
+    useEffect(() => {
+        let timer;
+        if (step === '2fa' && resendTimer > 0) {
+            timer = setInterval(() => {
+                setResendTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [step, resendTimer]);
+
+    const handleResendOtp = async () => {
+        try {
+            setLoading(true);
+            await resendTwoFactorLogin(email);
+            setResendTimer(30); // Reset timer
+            // Optionally show toast for success via local state or general toast if available
+            // Assuming no toast context available here, local error state can be cleared
+            setError('');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to resend OTP');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleGoogleSuccess = async (response) => {
         try {
@@ -137,6 +165,7 @@ const Login = () => {
                             </div>
                         </>
                     ) : (
+                        // ... (inside the 2FA else block)
                         <div className="relative group animate-in slide-in-from-right duration-300">
                             <Lock className="absolute left-4 top-3.5 text-gray-400 h-5 w-5 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors" />
                             <input
@@ -148,7 +177,29 @@ const Login = () => {
                                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                                 className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:text-white transition-all text-center tracking-[0.5em] font-bold text-lg"
                             />
-                            <p className="text-center text-xs text-gray-500 mt-2">Check your email for the verification code.</p>
+
+                            <div className="mt-4 flex flex-col items-center justify-center gap-2">
+                                <p className="text-center text-xs text-gray-500">
+                                    Check your email for the verification code.
+                                    <br />
+                                    Code expires in 10 minutes.
+                                </p>
+
+                                {resendTimer > 0 ? (
+                                    <p className="text-xs font-medium text-gray-400">
+                                        Resend code in <span className="text-indigo-600 dark:text-indigo-400">{resendTimer}s</span>
+                                    </p>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handleResendOtp}
+                                        disabled={loading}
+                                        className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors disabled:opacity-50"
+                                    >
+                                        Resend OTP
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     )}
 

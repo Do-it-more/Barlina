@@ -24,7 +24,7 @@ const MobileBottomNav = () => {
     ];
 
     return (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 pb-2">
+        <div className="md:hidden print:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 pb-2">
             <div className="flex justify-around items-center h-16">
                 {navItems.map((item) => {
                     const active = isActive(item.path);

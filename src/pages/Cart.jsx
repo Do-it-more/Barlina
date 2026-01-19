@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -6,14 +6,57 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import api from '../services/api';
 
 const Cart = () => {
     const { cart, updateQuantity, removeFromCart, getCartTotal } = useCart();
     const { user } = useAuth();
+    const [stockData, setStockData] = useState({});
+    const [loadingStock, setLoadingStock] = useState(false);
+
     const total = getCartTotal();
     const tax = total * 0.1;
     const shipping = total > 50 ? 0 : 10;
     const finalTotal = total + tax + shipping;
+
+    useEffect(() => {
+        const fetchStock = async () => {
+            if (cart.length === 0) return;
+            setLoadingStock(true);
+            try {
+                // Fetch fresh data for each item
+                const promises = cart.map(item => {
+                    const id = item.product._id || item.product;
+                    return api.get(`/products/${id}`).then(res => ({ id, data: res.data })).catch(() => ({ id, error: true }));
+                });
+
+                const results = await Promise.all(promises);
+                const newStockData = {};
+                results.forEach(res => {
+                    if (!res.error) {
+                        newStockData[res.id] = res.data;
+                    }
+                });
+                setStockData(newStockData);
+            } catch (err) {
+                console.error("Failed to refresh stock", err);
+            } finally {
+                setLoadingStock(false);
+            }
+        };
+
+        fetchStock();
+    }, [cart]); // Re-check when cart changes
+
+    // Check for any OOS items to disable checkout
+    const hasOutOfStockItems = cart.some(item => {
+        const id = item.product._id || item.product;
+        const freshProduct = stockData[id];
+        if (!freshProduct) return false; // Assume okay if loading or failed
+
+        // Stock Logic: If Limited Stock AND Quantity requested > Available
+        return (freshProduct.isStockEnabled !== false && freshProduct.countInStock < item.quantity);
+    });
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
@@ -39,20 +82,11 @@ const Cart = () => {
                         <div className="lg:col-span-2 space-y-4">
                             <AnimatePresence>
                                 {cart.map((item) => {
-                                    // The ID structure depends on populate. If items is [{product: 'id', ...}], then product is the ID.
-                                    // If backend returns populated { product: { _id: ... } }, then product._id is ID.
-                                    // In my cart controller, I am pushing productId string/ObjectId to `product` field.
-                                    // BUT getCart does NO populate in controller!
-                                    // So `item.product` IS the ID.
-                                    // Wait, in `addToCart`, I push { product: productId, ... }.
-                                    // So `item.product` is the ID.
-                                    // BUT `Cart.jsx` uses `item._id` or `item.id`.
-                                    // `item._id` is the subdocument ID of the item in the array.
-                                    // The `updateQuantity` likely expects `productId` (the product's ID), NOT the cart item's ID.
-                                    // Checking controller: `const itemIndex = cart.items.findIndex(p => p.product.toString() === productId);`
-                                    // It expects PRODUCT ID.
-                                    // So I must pass `item.product`.
                                     const id = item.product._id || item.product;
+                                    const freshProduct = stockData[id];
+                                    const isOOS = freshProduct && freshProduct.isStockEnabled !== false && freshProduct.countInStock < item.quantity;
+                                    const remaining = freshProduct ? freshProduct.countInStock : item.quantity + 99; // Fallback
+
                                     return (
                                         <motion.div
                                             key={id}
@@ -60,10 +94,15 @@ const Cart = () => {
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, x: -100 }}
-                                            className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row gap-6 items-center"
+                                            className={`bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm border ${isOOS ? 'border-red-300 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10' : 'border-gray-100 dark:border-slate-700'} flex flex-col sm:flex-row gap-6 items-center`}
                                         >
-                                            <div className="w-24 h-24 bg-gray-50 dark:bg-slate-700 rounded-xl overflow-hidden flex-shrink-0">
+                                            <div className="w-24 h-24 bg-gray-50 dark:bg-slate-700 rounded-xl overflow-hidden flex-shrink-0 relative">
                                                 <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                                {isOOS && (
+                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                        <span className="text-[10px] font-bold text-white uppercase tracking-wider bg-red-500 px-2 py-1 rounded">Out of Stock</span>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div className="flex-1 text-center sm:text-left">
@@ -78,6 +117,12 @@ const Cart = () => {
                                                     )}
                                                 </div>
                                                 <div className="font-bold text-indigo-600 dark:text-indigo-400">₹{item.price}</div>
+
+                                                {isOOS && (
+                                                    <p className="text-xs font-bold text-red-500 mt-2">
+                                                        {freshProduct.countInStock === 0 ? "Currently Unavailable" : `Only ${freshProduct.countInStock} available! Reduce quantity.`}
+                                                    </p>
+                                                )}
                                             </div>
 
                                             <div className="flex items-center gap-4">
@@ -89,12 +134,13 @@ const Cart = () => {
                                                     >
                                                         <Minus className="h-3 w-3" />
                                                     </button>
-                                                    <span className="w-8 text-center font-bold text-sm text-slate-900 dark:text-white">{item.quantity}</span>
+                                                    <span className={`w-8 text-center font-bold text-sm ${isOOS ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>{item.quantity}</span>
                                                     <button
                                                         onClick={() => updateQuantity(id, item.quantity + 1, item.color)}
                                                         className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                                                        disabled={freshProduct && freshProduct.isStockEnabled !== false && item.quantity >= freshProduct.countInStock}
                                                     >
-                                                        <Plus className="h-3 w-3" />
+                                                        <Plus className={`h-3 w-3 ${(freshProduct && freshProduct.isStockEnabled !== false && item.quantity >= freshProduct.countInStock) ? 'text-gray-300' : ''}`} />
                                                     </button>
                                                 </div>
 
@@ -152,10 +198,27 @@ const Cart = () => {
                                         </button>
                                     </div>
                                 ) : (
-                                    <Link to="/checkout" className="block w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white text-center rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2">
-                                        Proceed to Checkout
-                                        <ArrowRight className="h-4 w-4" />
-                                    </Link>
+                                    <div className="space-y-3">
+                                        {hasOutOfStockItems ? (
+                                            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl">
+                                                <p className="text-xs text-red-600 dark:text-red-400 font-bold text-center">
+                                                    Some items are out of stock. Please remove or update quantity to proceed.
+                                                </p>
+                                            </div>
+                                        ) : null}
+
+                                        <Link
+                                            to={hasOutOfStockItems ? "#" : "/checkout"}
+                                            onClick={(e) => hasOutOfStockItems && e.preventDefault()}
+                                            className={`block w-full py-4 text-center rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${hasOutOfStockItems
+                                                ? 'bg-gray-300 dark:bg-slate-700 text-gray-500 cursor-not-allowed'
+                                                : 'bg-slate-900 dark:bg-indigo-600 text-white hover:bg-slate-800 dark:hover:bg-indigo-700 hover:shadow-xl active:scale-95'
+                                                }`}
+                                        >
+                                            Proceed to Checkout
+                                            <ArrowRight className="h-4 w-4" />
+                                        </Link>
+                                    </div>
                                 )}
 
                                 <div className="mt-6 flex flex-col gap-2">

@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Star, Heart, Flame } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import WishlistButton from './WishlistButton';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import api from '../services/api';
+
+// Simple cache to avoid multiple API calls for the same settings on a page with multiple cards
+let globalSettingsCache = null;
+let globalSettingsPromise = null;
 
 const ProductCard = React.memo(({ product }) => {
     const id = product.id || product._id;
@@ -12,6 +17,41 @@ const ProductCard = React.memo(({ product }) => {
     const { addToCart } = useCart();
     const [adding, setAdding] = React.useState(false);
     const navigate = useNavigate();
+
+    const [globalSettings, setGlobalSettings] = useState({
+        isGlobalStockActive: true,
+        isStockCountVisible: true
+    });
+
+    useEffect(() => {
+        const loadSettings = async () => {
+            if (globalSettingsCache) {
+                setGlobalSettings({
+                    isGlobalStockActive: globalSettingsCache.isGlobalStockActive ?? true,
+                    isStockCountVisible: globalSettingsCache.isStockCountVisible ?? true
+                });
+                return;
+            }
+
+            if (!globalSettingsPromise) {
+                globalSettingsPromise = api.get('/settings');
+            }
+
+            try {
+                const { data } = await globalSettingsPromise;
+                globalSettingsCache = data;
+                setGlobalSettings({
+                    isGlobalStockActive: data.isGlobalStockActive ?? true,
+                    isStockCountVisible: data.isStockCountVisible ?? true
+                });
+            } catch (error) {
+                console.error("Failed to load settings in ProductCard", error);
+            }
+        };
+
+        loadSettings();
+    }, []);
+
 
     const handleAddToCart = async (e) => {
         e.preventDefault();
@@ -22,7 +62,7 @@ const ProductCard = React.memo(({ product }) => {
             return;
         }
 
-        if (product.countInStock === 0) return;
+        if (product.countInStock === 0 && (product.isStockEnabled !== false)) return;
 
         setAdding(true);
         await addToCart(product, 1);
@@ -39,6 +79,12 @@ const ProductCard = React.memo(({ product }) => {
     const handleCardClick = () => {
         navigate(`/product/${id}`);
     };
+
+    const isStockCountVisible = globalSettings.isStockCountVisible;
+
+    // Logic: 
+    // If Product Stock Disabled (Unlimited) OR Global Count Hidden -> Show "In Stock" (Green), Hide Count.
+    // If Normal -> Show Count logic.
 
     return (
         <motion.div
@@ -73,10 +119,10 @@ const ProductCard = React.memo(({ product }) => {
                 <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-black/50 to-transparent">
                     <button
                         onClick={handleAddToCart}
-                        disabled={adding || product.countInStock === 0}
-                        className={`w-full py-3 font-semibold rounded-xl transition-colors shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${product.countInStock === 0 ? 'bg-gray-100 text-gray-400' : 'bg-white text-slate-900 hover:bg-indigo-600 hover:text-white'}`}
+                        disabled={adding || (product.isStockEnabled !== false && product.countInStock === 0)}
+                        className={`w-full py-3 font-semibold rounded-xl transition-colors shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${product.isStockEnabled !== false && product.countInStock === 0 ? 'bg-gray-100 text-gray-400 opacity-90' : 'bg-white text-slate-900 hover:bg-indigo-600 hover:text-white'}`}
                     >
-                        {product.countInStock === 0 ? (
+                        {product.isStockEnabled !== false && product.countInStock === 0 ? (
                             <span className="text-sm">Out of Stock</span>
                         ) : adding ? (
                             <span className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></span>
@@ -102,17 +148,24 @@ const ProductCard = React.memo(({ product }) => {
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-2 capitalize">{product.category}</p>
 
                 <div className="mb-3">
-                    {product.countInStock > 0 ? (
+                    {product.isStockEnabled !== false && product.countInStock === 0 ? (
+                        <div className="flex items-center gap-1.5">
+                            <div className="h-1.5 w-1.5 rounded-full bg-red-500"></div>
+                            <span className="text-[10px] sm:text-xs font-semibold text-red-500">Out of Stock</span>
+                        </div>
+                    ) : !isStockCountVisible || product.isStockEnabled === false ? (
+                        <div className="flex items-center gap-1.5">
+                            <div className="h-1.5 w-1.5 rounded-full bg-green-500"></div>
+                            <span className="text-[10px] sm:text-xs font-medium text-green-600 dark:text-green-400">
+                                In Stock
+                            </span>
+                        </div>
+                    ) : (
                         <div className="flex items-center gap-1.5">
                             <div className={`h-1.5 w-1.5 rounded-full ${product.countInStock <= 5 ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`}></div>
                             <span className={`text-[10px] sm:text-xs font-medium ${product.countInStock <= 5 ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}`}>
                                 {product.countInStock <= 5 ? `Only ${product.countInStock} left` : `${product.countInStock} in stock`}
                             </span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-1.5">
-                            <div className="h-1.5 w-1.5 rounded-full bg-red-500"></div>
-                            <span className="text-[10px] sm:text-xs font-semibold text-red-500">Out of Stock</span>
                         </div>
                     )}
                 </div>

@@ -27,6 +27,8 @@ const ProductDetail = () => {
     const [comment, setComment] = useState('');
     const [relatedProducts, setRelatedProducts] = useState([]);
     const [globalCodEnabled, setGlobalCodEnabled] = useState(true);
+    // const [globalStockActive, setGlobalStockActive] = useState(true); // Deprecated
+    const [globalStockCountVisible, setGlobalStockCountVisible] = useState(true);
     const [globalDeliveryDays, setGlobalDeliveryDays] = useState(5);
     const [globalAreReturnsActive, setGlobalAreReturnsActive] = useState(true);
     const [selectedColor, setSelectedColor] = useState('');
@@ -41,6 +43,8 @@ const ProductDetail = () => {
             try {
                 const { data } = await api.get('/settings');
                 setGlobalCodEnabled(data.isCodAvailable);
+                // setGlobalStockActive(data.isGlobalStockActive !== false); // Ignored
+                setGlobalStockCountVisible(data.isStockCountVisible !== false);
                 setGlobalDeliveryDays(data.defaultEstimatedDeliveryDays || 5);
                 setGlobalAreReturnsActive(data.areReturnsActive !== false); // Default true
             } catch (error) {
@@ -263,14 +267,32 @@ const ProductDetail = () => {
                                     </button>
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`h-2 w-2 rounded-full ${product.countInStock > 5 ? 'bg-green-500' : product.countInStock > 0 ? 'bg-orange-500 animate-pulse' : 'bg-red-500'}`}></div>
-                                        <span className={`text-sm font-semibold ${product.countInStock > 5 ? 'text-green-600 dark:text-green-400' : product.countInStock > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-red-500'}`}>
-                                            {product.countInStock > 5 ? 'In Stock' : product.countInStock > 0 ? `Only ${product.countInStock} Left!` : 'Out of Stock'}
-                                        </span>
-                                    </div>
-                                    {product.countInStock > 0 && product.countInStock <= 10 && (
-                                        <p className="text-[10px] text-gray-400 font-medium italic">Hurry! Selling fast</p>
+                                    {product.isStockEnabled !== false && product.countInStock === 0 ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                                            <span className="text-sm font-semibold text-red-500">
+                                                Out of Stock
+                                            </span>
+                                        </div>
+                                    ) : product.isStockEnabled === false || !globalStockCountVisible ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                                            <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                                                In Stock
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-center gap-2">
+                                                <div className={`h-2 w-2 rounded-full ${product.countInStock > 5 ? 'bg-green-500' : 'bg-orange-500 animate-pulse'}`}></div>
+                                                <span className={`text-sm font-semibold ${product.countInStock > 5 ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                                                    {product.countInStock > 5 ? 'In Stock' : `Only ${product.countInStock} Left!`}
+                                                </span>
+                                            </div>
+                                            {product.countInStock > 0 && product.countInStock <= 10 && (
+                                                <p className="text-[10px] text-gray-400 font-medium italic">Hurry! Selling fast</p>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -288,11 +310,11 @@ const ProductDetail = () => {
                                     ) : (
                                         <button
                                             onClick={handleAddToCart}
-                                            disabled={product.countInStock === 0}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-full font-bold text-lg transition-all shadow-lg hover:shadow-xl active:scale-95 ${product.countInStock === 0 ? 'bg-gray-200 dark:bg-slate-700 text-gray-400 cursor-not-allowed' : 'bg-slate-900 dark:bg-indigo-600 text-white hover:bg-slate-800 dark:hover:bg-indigo-700'}`}
+                                            disabled={product.isStockEnabled !== false && product.countInStock === 0}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-full font-bold text-lg transition-all shadow-lg hover:shadow-xl active:scale-95 ${product.isStockEnabled !== false && product.countInStock === 0 ? 'bg-gray-200 dark:bg-slate-700 text-gray-400 cursor-not-allowed' : 'bg-slate-900 dark:bg-indigo-600 text-white hover:bg-slate-800 dark:hover:bg-indigo-700'}`}
                                         >
                                             <ShoppingCart className="h-5 w-5" />
-                                            {product.countInStock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                                            {product.isStockEnabled !== false && product.countInStock === 0 ? 'Out of Stock' : 'Add to Cart'}
                                         </button>
                                     )
                                 ) : (

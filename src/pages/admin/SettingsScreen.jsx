@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
-import { Save, Settings as SettingsIcon, Truck, CreditCard, Lock, Shield, Mail, Key, ShieldCheck, MessageSquare } from 'lucide-react';
+import { Save, Settings as SettingsIcon, Truck, CreditCard, Lock, Shield, Mail, Key, ShieldCheck, MessageSquare, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const SettingsScreen = () => {
@@ -151,6 +151,46 @@ const SettingsScreen = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Stock Configuration */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center gap-3">
+                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                        <ShoppingBag className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Stock Configuration</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Manage global inventory settings</p>
+                    </div>
+                </div>
+
+                <div className="p-6 divide-y divide-gray-100 dark:divide-slate-700">
+                    <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                        <div className="flex items-start gap-3">
+                            <div className="mt-1">
+                                <ShoppingBag className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Show Quantity Label</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+                                    Show "Only X left" messages to customers.
+                                </p>
+                            </div>
+                        </div>
+
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={settings.isStockCountVisible ?? true}
+                                onChange={(e) => handleToggle('isStockCountVisible', e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
 
             {/* Delivery Settings */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">

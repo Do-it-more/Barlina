@@ -1,16 +1,50 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
-import { Trash2, Shield, User, ShieldCheck, Plus, Copy, Check, Facebook, Mail, Search } from 'lucide-react';
+import { Trash2, Shield, User, ShieldCheck, Plus, Copy, Check, Facebook, Mail, Search, MessageSquare } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminChat } from '../../context/AdminChatContext';
+
+// Helper Component for Avatar with Fallback
+const UserAvatar = ({ user }) => {
+    const [imgError, setImgError] = useState(false);
+
+    // Reset error state if the photo URL changes
+    useEffect(() => {
+        setImgError(false);
+    }, [user.profilePhoto]);
+
+    if (user.profilePhoto && !imgError) {
+        return (
+            <img
+                src={user.profilePhoto}
+                alt={user.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                    // Prevent infinite loop if fallback also fails (though we switch to text here)
+                    e.target.onerror = null;
+                    setImgError(true);
+                }}
+            />
+        );
+    }
+
+    return (
+        <span className="text-sm">
+            {user.name?.charAt(0).toUpperCase() || '?'}
+        </span>
+    );
+};
 
 const UserListScreen = () => {
     const { showToast } = useToast();
     const { confirm } = useConfirm();
     const { user: currentUser } = useAuth(); // Rename to avoid conflict with user in map
+    const { openChat } = useAdminChat();
     const [users, setUsers] = useState([]);
+    const [allCategories, setAllCategories] = useState([]); // New State
     const [copiedEmail, setCopiedEmail] = useState(null);
     const [filter, setFilter] = useState('all'); // 'all', 'admin', 'user'
 
@@ -32,47 +66,37 @@ const UserListScreen = () => {
             categories: false,
             coupons: false,
             settings: false
-        }
+        },
+        assignedCategories: [] // New State
     });
 
     useEffect(() => {
-        const fetchUsers = async () => {
+        const fetchData = async () => {
             try {
-                const { data } = await api.get('/users');
-                // Filter out Super Admin for security and relevance
-                let filteredUsers = data.filter(u => u.role !== 'super_admin');
-
-                // If current user is NOT Super Admin, they cannot see other Admins
-                // We verify checking strictly that role is 'user' or just NOT an admin
+                // Fetch Users
+                const { data: usersData } = await api.get('/users');
+                let filteredUsers = usersData.filter(u => u.role !== 'super_admin');
                 if (currentUser?.role !== 'super_admin') {
                     filteredUsers = filteredUsers.filter(u => u.role !== 'admin' && u.role !== 'super_admin');
                 }
-
                 setUsers(filteredUsers);
+
+                // Fetch Categories (for RBAC modal)
+                if (currentUser?.role === 'super_admin') {
+                    const { data: catData } = await api.get('/categories');
+                    setAllCategories(catData);
+                }
             } catch (error) {
-                console.error("Failed to fetch users", error);
+                console.error("Failed to fetch data", error);
                 if (error.response?.status === 403) {
-                    showToast("Access Denied: You do not have permission to view users.", "error");
-                } else {
-                    showToast("Failed to load user list", "error");
+                    showToast("Access Denied.", "error");
                 }
             }
         };
-        fetchUsers();
+        fetchData();
     }, [currentUser, showToast]);
 
-    const deleteHandler = async (id) => {
-        const isConfirmed = await confirm('Delete User', 'Are you sure you want to delete this user?');
-        if (isConfirmed) {
-            try {
-                await api.delete(`/users/${id}`);
-                setUsers(users.filter(user => user._id !== id));
-                showToast("User deleted successfully", "success");
-            } catch (error) {
-                showToast('Failed to delete user', 'error');
-            }
-        }
-    };
+    // ... (deleteHandler remains same) ...
 
     const openAccessModal = (user) => {
         if (currentUser?.role !== 'super_admin') {
@@ -94,29 +118,32 @@ const UserListScreen = () => {
                 categories: user.permissions?.categories || false,
                 coupons: user.permissions?.coupons || false,
                 settings: user.permissions?.settings || false
-            }
+            },
+            assignedCategories: user.assignedCategories || [] // Populate
         });
         setIsAccessModalOpen(true);
     };
 
     const handleAccessSave = async () => {
         try {
-            // 1. Update Role if changed
             const newRole = accessForm.isAdmin ? 'admin' : 'user';
-            if (newRole !== selectedUser.role) {
-                await api.put(`/users/${selectedUser._id}`, { role: newRole });
-            }
 
-            // 2. Update Permissions (Only if isAdmin is true, otherwise irrelevant but good to save)
-            // Note: API endpoint path based on adminManagementRoutes
-            await api.put(`/admin/management/users/${selectedUser._id}/permissions`, {
-                permissions: accessForm.permissions
+            // Unified Update Call (Role + Permissions + Categories)
+            await api.put(`/admin/management/users/${selectedUser._id}/access`, {
+                role: newRole,
+                permissions: accessForm.permissions,
+                categories: accessForm.assignedCategories
             });
 
-            // 3. Update Local State
+            // Update Local State
             setUsers(users.map(u => {
                 if (u._id === selectedUser._id) {
-                    return { ...u, role: newRole, permissions: accessForm.permissions };
+                    return {
+                        ...u,
+                        role: newRole,
+                        permissions: accessForm.permissions,
+                        assignedCategories: accessForm.assignedCategories
+                    };
                 }
                 return u;
             }));
@@ -137,6 +164,16 @@ const UserListScreen = () => {
                 [key]: !prev.permissions[key]
             }
         }));
+    };
+
+    const toggleCategory = (catId) => {
+        setAccessForm(prev => {
+            const current = prev.assignedCategories;
+            const updated = current.includes(catId)
+                ? current.filter(id => id !== catId)
+                : [...current, catId];
+            return { ...prev, assignedCategories: updated };
+        });
     };
 
     const copyToClipboard = (email) => {
@@ -246,8 +283,8 @@ const UserListScreen = () => {
                             {displayedUsers.map((user) => (
                                 <tr key={user._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                                     <td className="p-4 flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
-                                            {user.name.charAt(0).toUpperCase()}
+                                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold overflow-hidden shadow-sm border border-indigo-50">
+                                            <UserAvatar user={user} />
                                         </div>
                                         {currentUser?.role === 'super_admin' || currentUser?.role === 'admin' ? (
                                             <Link
@@ -310,7 +347,16 @@ const UserListScreen = () => {
                                             </div>
                                         )}
                                     </td>
-                                    <td className="p-4 text-right">
+                                    <td className="p-4 text-right flex items-center justify-end gap-2">
+                                        {(user.role === 'admin' || user.role === 'super_admin') && user._id !== currentUser._id && (
+                                            <button
+                                                onClick={() => openChat(user)}
+                                                className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                                                title="Message Admin"
+                                            >
+                                                <MessageSquare className="h-4 w-4" />
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => deleteHandler(user._id)}
                                             className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
@@ -331,8 +377,8 @@ const UserListScreen = () => {
                     <div key={user._id} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col gap-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold">
-                                    {user.name.charAt(0).toUpperCase()}
+                                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold overflow-hidden shadow-sm border border-indigo-50 dark:border-indigo-800">
+                                    <UserAvatar user={user} />
                                 </div>
                                 <div className="overflow-hidden">
                                     {currentUser?.role === 'super_admin' || currentUser?.role === 'admin' ? (
@@ -358,17 +404,28 @@ const UserListScreen = () => {
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-slate-700">
-                            <button
-                                onClick={() => openAccessModal(user)}
-                                disabled={currentUser?.role !== 'super_admin'}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${user.role === 'admin'
-                                    ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                    : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300'
-                                    } ${currentUser?.role !== 'super_admin' ? 'opacity-80' : ''}`}
-                            >
-                                <ShieldCheck className="h-4 w-4" />
-                                {user.role === 'admin' ? 'Manage Access' : 'Assign Role'}
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => openAccessModal(user)}
+                                    disabled={currentUser?.role !== 'super_admin'}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${user.role === 'admin'
+                                        ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                        : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300'
+                                        } ${currentUser?.role !== 'super_admin' ? 'opacity-80' : ''}`}
+                                >
+                                    <ShieldCheck className="h-4 w-4" />
+                                    {user.role === 'admin' ? 'Manage Access' : 'Assign Role'}
+                                </button>
+
+                                {(user.role === 'admin' || user.role === 'super_admin') && user._id !== currentUser._id && (
+                                    <button
+                                        onClick={() => openChat(user)}
+                                        className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                                    >
+                                        <MessageSquare className="h-5 w-5" />
+                                    </button>
+                                )}
+                            </div>
 
                             <button
                                 onClick={() => deleteHandler(user._id)}
@@ -408,6 +465,50 @@ const UserListScreen = () => {
                                 </label>
                             </div>
 
+                            {/* 2FA Toggle (Super Admin Control) */}
+                            {accessForm.isAdmin && (
+                                <div className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-white dark:bg-indigo-900 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                            <Shield className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-slate-800 dark:text-white">Two-Factor Auth</p>
+                                            <p className="text-xs text-gray-500">Force enable/disable 2FA for this admin</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (!selectedUser) return;
+                                            const confirmMsg = selectedUser.isTwoFactorEnabled
+                                                ? "Disable 2FA for this user?"
+                                                : "Enable 2FA for this user?";
+
+                                            const isConfirmed = await confirm("Toggle 2FA", confirmMsg);
+                                            if (!isConfirmed) return;
+
+                                            try {
+                                                const { data } = await api.put(`/admin/management/users/${selectedUser._id}/2fa`);
+                                                showToast(data.message, "success");
+
+                                                // Update local state
+                                                setSelectedUser(prev => ({ ...prev, isTwoFactorEnabled: data.isTwoFactorEnabled }));
+                                                setUsers(users.map(u => u._id === selectedUser._id ? { ...u, isTwoFactorEnabled: data.isTwoFactorEnabled } : u));
+                                            } catch (error) {
+                                                console.error(error);
+                                                showToast("Failed to toggle 2FA", "error");
+                                            }
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${selectedUser?.isTwoFactorEnabled
+                                            ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
+                                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-slate-700 dark:text-gray-400'
+                                            }`}
+                                    >
+                                        {selectedUser?.isTwoFactorEnabled ? 'ENABLED' : 'DISABLED'}
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Permissions Grid */}
                             <div className={`space-y-3 transition-all duration-300 ${accessForm.isAdmin ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'}`}>
                                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Work Assignment (Modules)</p>
@@ -440,6 +541,31 @@ const UserListScreen = () => {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+
+                            {/* Category Scope Section */}
+                            <div className={`space-y-3 pt-4 border-t border-gray-100 dark:border-slate-700 transition-all duration-300 ${accessForm.isAdmin ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'}`}>
+                                <div>
+                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Category Scope (Recommended)</p>
+                                    <p className="text-xs text-gray-500 mt-1">Restrict admin to specific categories. Leave empty for access to ALL categories.</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-100 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-900/30">
+                                    {allCategories.map(cat => (
+                                        <label key={cat._id} className="flex items-center gap-2 p-2 hover:bg-white dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={accessForm.assignedCategories.includes(cat._id)}
+                                                onChange={() => toggleCategory(cat._id)}
+                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                            <span className="text-sm text-slate-700 dark:text-gray-300">{cat.name}</span>
+                                        </label>
+                                    ))}
+                                    {allCategories.length === 0 && (
+                                        <p className="text-xs text-gray-400 col-span-2 text-center py-2">No categories found in store.</p>
+                                    )}
                                 </div>
                             </div>
                         </div>

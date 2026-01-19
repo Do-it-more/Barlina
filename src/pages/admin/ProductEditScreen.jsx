@@ -17,6 +17,7 @@ const ProductEditScreen = () => {
     const [brand, setBrand] = useState('');
     const [category, setCategory] = useState('');
     const [countInStock, setCountInStock] = useState(0);
+    const [isStockEnabled, setIsStockEnabled] = useState(true);
     const [isCodAvailable, setIsCodAvailable] = useState(true);
     const [description, setDescription] = useState('');
     const [categories, setCategories] = useState([]);
@@ -128,6 +129,7 @@ const ProductEditScreen = () => {
                 setBrand(data.brand);
                 setCategory(data.category);
                 setCountInStock(data.countInStock);
+                setIsStockEnabled(data.isStockEnabled !== undefined ? data.isStockEnabled : true);
                 setIsCodAvailable(data.isCodAvailable !== undefined ? data.isCodAvailable : true);
                 setEstimatedDeliveryDays(data.estimatedDeliveryDays || '');
                 setColors(data.colors || []);
@@ -296,6 +298,7 @@ const ProductEditScreen = () => {
                 brand,
                 category,
                 countInStock,
+                isStockEnabled,
                 isCodAvailable,
                 estimatedDeliveryDays,
                 colors,
@@ -343,7 +346,7 @@ const ProductEditScreen = () => {
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Price (₹)</label>
                             <input
@@ -388,12 +391,30 @@ const ProductEditScreen = () => {
                             <p className="text-xs text-gray-500">Set 0 for no discount</p>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Stock Count</label>
+                            <div className="flex justify-between items-center">
+                                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Stock Count</label>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 font-medium">
+                                        {isStockEnabled ? 'Tracking On' : 'Unlimited'}
+                                    </span>
+                                    <div className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                                        <input
+                                            type="checkbox"
+                                            id="stockToggle"
+                                            checked={isStockEnabled}
+                                            onChange={(e) => setIsStockEnabled(e.target.checked)}
+                                            className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer peer checked:right-0 right-5 transition-all duration-300"
+                                        />
+                                        <label htmlFor="stockToggle" className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-300 ${isStockEnabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-slate-600'}`}></label>
+                                    </div>
+                                </div>
+                            </div>
                             <input
                                 type="number"
-                                required
+                                required={isStockEnabled}
                                 min="0"
                                 value={countInStock}
+                                disabled={!isStockEnabled}
                                 onChange={(e) => {
                                     const val = e.target.value;
                                     if (val === '') {
@@ -405,8 +426,19 @@ const ProductEditScreen = () => {
                                         }
                                     }
                                 }}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className={`w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-opacity ${!isStockEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">COD Availability</label>
+                            <select
+                                value={isCodAvailable}
+                                onChange={(e) => setIsCodAvailable(e.target.value === 'true')}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="true">Available</option>
+                                <option value="false">Not Available</option>
+                            </select>
                         </div>
                     </div>
 
@@ -547,27 +579,7 @@ const ProductEditScreen = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-4 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-900/50">
-                        <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                            <input
-                                type="checkbox"
-                                name="isCodAvailable"
-                                id="isCodAvailable"
-                                checked={isCodAvailable}
-                                onChange={(e) => setIsCodAvailable(e.target.checked)}
-                                className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer peer checked:right-0 right-6 transition-all duration-300"
-                            />
-                            <label htmlFor="isCodAvailable" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer transition-colors duration-300 ${isCodAvailable ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-slate-600'}`}></label>
-                        </div>
-                        <div>
-                            <label htmlFor="isCodAvailable" className="block text-sm font-bold text-gray-700 dark:text-gray-200 cursor-pointer">
-                                Cash on Delivery Available
-                            </label>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {isCodAvailable ? 'Customers can pay with COD for this product.' : 'Online payment only for this product.'}
-                            </p>
-                        </div>
-                    </div>
+
 
                     {/* Return Policy Section */}
                     <div className="p-4 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-900/50 space-y-4">
@@ -625,14 +637,20 @@ const ProductEditScreen = () => {
                             <select
                                 required
                                 value={category}
+                                disabled={categories.length === 0}
                                 onChange={(e) => setCategory(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <option value="">Select Category</option>
+                                <option value="">{categories.length === 0 ? "No categories assigned" : "Select Category"}</option>
                                 {categories.map((cat) => (
                                     <option key={cat._id} value={cat.name}>{cat.name}</option>
                                 ))}
                             </select>
+                            {categories.length === 0 && (
+                                <p className="text-xs text-red-500 mt-1">
+                                    No categories available. Please contact Super Admin for access.
+                                </p>
+                            )}
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Brand</label>
