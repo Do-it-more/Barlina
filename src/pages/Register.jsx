@@ -94,8 +94,14 @@ const Register = () => {
         try {
             setLoading(true);
             setError('');
-            await googleLogin(response.code);
-            navigate('/');
+            const data = await googleLogin(response.code);
+
+            // Check if phone verification is required
+            if (data.phoneVerificationRequired) {
+                navigate('/verify-phone');
+            } else {
+                navigate('/');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Google registration failed');
         } finally {
@@ -125,7 +131,12 @@ const Register = () => {
 
     // Initialize Recaptcha (Robust)
     const setupRecaptcha = () => {
-        if (!window.recaptchaVerifier) {
+        // If already initialized, don't recreate it
+        if (window.recaptchaVerifier) {
+            return;
+        }
+
+        try {
             window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
                 'size': 'invisible',
                 'callback': (response) => {
@@ -133,26 +144,23 @@ const Register = () => {
                 },
                 'expired-callback': () => {
                     console.warn("Recaptcha expired");
-                    if (window.recaptchaVerifier) {
-                        try {
-                            window.recaptchaVerifier.clear();
-                        } catch (e) { }
-                        window.recaptchaVerifier = null;
-                        // setPhoneStatus('idle'); // Optional: Reset status
-                    }
+                    // Don't auto-clear here, just let the next attempt handle it or user retry
                 }
             });
+        } catch (error) {
+            console.error("Recaptcha setup error:", error);
+            // If it failed saying already rendered, try to clear and retry once (fallback)
+            if (window.recaptchaVerifier) {
+                try {
+                    window.recaptchaVerifier.clear();
+                    window.recaptchaVerifier = null;
+                } catch (e) { }
+            }
         }
     };
 
     useEffect(() => {
-        // Clear any existing auth state to ensure a fresh flow
-        auth.signOut().then(() => {
-            console.log("Auth state cleared for fresh verification");
-        }).catch(err => console.error("Error clearing auth:", err));
-
-        setupRecaptcha();
-
+        // Don't auto-setup recaptcha on mount, do it on button click
         return () => {
             // Cleanup on unmount
             if (window.recaptchaVerifier) {
@@ -221,38 +229,134 @@ const Register = () => {
         setPhoneError('');
 
         try {
-            // Use Backend Mock SMS (Free Tier)
-            await api.post('/users/send-phone-otp', { phone: formData.phone });
-            setPhoneStatus('sent');
-            // Inform user to check console if they are dev, or just say it's sent
-            console.log("Mock SMS Sent. Use OTP: 123456");
-            showToast("OTP Sent! Use 123456", "success");
+            // Force a fresh recaptcha every time
+            if (window.recaptchaVerifier) {
+                try { window.recaptchaVerifier.clear(); } catch (e) { }
+                window.recaptchaVerifier = null;
+            }
+
+            // Clear the recaptcha container DOM
+            const container = document.getElementById('recaptcha-container');
+            if (container) {
+                container.innerHTML = '';
+            }
+
+            console.log("📱 Setting up phone verification for: +91" + formData.phone);
+
+            // Create visible reCAPTCHA - user must solve the checkbox
+            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                'size': 'normal',
+                'callback': async (response) => {
+                    console.log("✅ reCAPTCHA solved, sending SMS...");
+                    try {
+                        const phoneNumber = `+91${formData.phone}`;
+                        const result = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
+                        setConfirmationResult(result);
+                        setPhoneStatus('sent');
+                        showToast("OTP sent to your phone!", "success");
+                    } catch (smsErr) {
+                        console.error("SMS error:", smsErr.code, smsErr.message);
+                        setPhoneStatus('idle');
+                        // Clear the failed recaptcha
+                        if (window.recaptchaVerifier) {
+                            try { window.recaptchaVerifier.clear(); } catch (e) { }
+                            window.recaptchaVerifier = null;
+                        }
+                        // Clear recaptcha container DOM
+                        const container = document.getElementById('recaptcha-container');
+                        if (container) container.innerHTML = '';
+
+                        if (smsErr.code === 'auth/too-many-requests') {
+                            setPhoneError('Too many attempts. Wait 10-15 minutes and try again.');
+                        } else if (smsErr.code === 'auth/invalid-phone-number') {
+                            setPhoneError('Invalid phone number. Please check the format.');
+                        } else if (smsErr.code === 'auth/internal-error') {
+                            setPhoneError('Firebase service temporarily unavailable. Please try again.');
+                        } else if (smsErr.code === 'auth/quota-exceeded') {
+                            setPhoneError('SMS quota exceeded. Please contact support.');
+                        } else {
+                            setPhoneError(`Error: ${smsErr.message || smsErr.code || 'Unknown error'}`);
+                        }
+                    }
+                },
+                'expired-callback': () => {
+                    console.warn("⚠️ reCAPTCHA expired");
+                    setPhoneError('reCAPTCHA expired. Click Verify again.');
+                    setPhoneStatus('idle');
+                    // Clear expired recaptcha
+                    if (window.recaptchaVerifier) {
+                        try { window.recaptchaVerifier.clear(); } catch (e) { }
+                        window.recaptchaVerifier = null;
+                    }
+                    const container = document.getElementById('recaptcha-container');
+                    if (container) container.innerHTML = '';
+                }
+            });
+
+            // Render the captcha widget - user will see a checkbox to solve
+            await window.recaptchaVerifier.render();
+            console.log("👆 Please solve the reCAPTCHA to continue");
 
         } catch (err) {
-            console.error("SMS Error:", err);
+            console.error("Phone verification error:", err.code, err.message);
             setPhoneStatus('idle');
-            setPhoneError(err.response?.data?.message || 'Failed to send SMS');
+            // Clear failed recaptcha
+            if (window.recaptchaVerifier) {
+                try { window.recaptchaVerifier.clear(); } catch (e) { }
+                window.recaptchaVerifier = null;
+            }
+
+            // Clear the recaptcha container DOM
+            const container = document.getElementById('recaptcha-container');
+            if (container) container.innerHTML = '';
+
+            if (err.code === 'auth/invalid-app-credential') {
+                setPhoneError('Firebase configuration error. Please refresh the page.');
+            } else if (err.code === 'auth/too-many-requests') {
+                setPhoneError('Too many attempts. Wait 10-15 minutes and try again.');
+            } else if (err.code === 'auth/internal-error') {
+                setPhoneError('Firebase service temporarily unavailable. Please try again.');
+            } else {
+                setPhoneError(`Error: ${err.message || err.code || 'Unknown error'}`);
+            }
         }
     };
 
     const handleVerifyPhoneOtp = async () => {
         if (!phoneOtp) return;
+        if (!confirmationResult) {
+            setPhoneError('Session expired. Please request a new OTP.');
+            setPhoneStatus('idle');
+            return;
+        }
+
         setPhoneStatus('verifying');
 
         try {
-            // Use Backend Mock Verify
-            const { data } = await api.post('/users/verify-phone-otp', {
-                phone: formData.phone,
-                otp: phoneOtp
-            });
+            // Verify OTP with Firebase
+            const userCredential = await confirmationResult.confirm(phoneOtp);
 
-            console.log("Phone Verified");
-            setPhoneVerificationToken(data.phoneVerificationToken);
+            // Get Firebase ID Token for backend verification
+            const idToken = await userCredential.user.getIdToken();
+
+            console.log("Phone Verified via Firebase!");
+            setPhoneVerificationToken(idToken);
             setPhoneStatus('verified');
+            showToast("Phone verified successfully!", "success");
+
         } catch (err) {
+            console.error("OTP Verification Error:", err);
             setPhoneStatus('sent');
-            setPhoneError(err.response?.data?.message || 'Invalid Verification Code');
-            console.error("OTP Error:", err);
+
+            if (err.code === 'auth/invalid-verification-code') {
+                setPhoneError('Invalid OTP. Please check and try again.');
+            } else if (err.code === 'auth/code-expired') {
+                setPhoneError('OTP expired. Please request a new one.');
+                setPhoneStatus('idle');
+                setConfirmationResult(null);
+            } else {
+                setPhoneError(err.message || 'Verification failed. Please try again.');
+            }
         }
     };
 
@@ -311,8 +415,6 @@ const Register = () => {
                     <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Create Account</h2>
                     <p className="text-gray-500 dark:text-gray-400">Join Barlina Fashion Design and start shopping today</p>
                 </div>
-
-                <div id="recaptcha-container"></div>
 
                 {error && <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg text-sm border border-red-200 dark:border-red-800">{error}</div>}
 
@@ -487,6 +589,9 @@ const Register = () => {
                         }
                     />
 
+                    {/* reCAPTCHA appears here after clicking Phone Verify */}
+                    <div id="recaptcha-container" className="flex justify-center my-4"></div>
+
                     <button
                         disabled={loading}
                         className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed"
@@ -528,6 +633,8 @@ const Register = () => {
                 <p className="mt-8 text-center text-xs text-gray-400">
                     By joining, you agree to our Terms of Service and Privacy Policy
                 </p>
+
+                {/* reCAPTCHA container is already defined above */}
             </motion.div>
         </div>
     );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
+import { Mail, Phone, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 
 const Footer = () => {
     // State for mobile accordion sections
@@ -30,11 +30,7 @@ const Footer = () => {
                             Discover the latest trends in tech and lifestyle. Quality products, premium service, and fast delivery guaranteed.
                         </p>
                         <div className="flex space-x-4 mb-8 md:mb-0">
-                            {[Facebook, Twitter, Instagram, Linkedin].map((Icon, index) => (
-                                <a key={index} href="#" className="w-10 h-10 rounded-full bg-gray-50 dark:bg-slate-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white dark:hover:text-white transition-all duration-300">
-                                    <Icon className="h-5 w-5" />
-                                </a>
-                            ))}
+                            {/* Social icons removed */}
                         </div>
                     </div>
 
@@ -54,7 +50,8 @@ const Footer = () => {
                                 { name: 'Home', path: '/' },
                                 { name: 'Shop', path: '/products' },
                                 { name: 'About Us', path: '/about' },
-                                { name: 'Contact', path: '/contact' }
+                                { name: 'Contact', path: '/contact' },
+                                { name: 'Become a Seller', path: '/seller/register' }
                             ].map((item) => (
                                 <li key={item.name}>
                                     <Link to={item.path} className="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors block py-1">

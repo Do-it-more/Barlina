@@ -1,12 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { QRCodeSVG } from 'qrcode.react';
 import api from '../services/api';
-import { Loader, Lock, CreditCard, QrCode, Smartphone, ExternalLink, Truck } from 'lucide-react';
+import { Loader, Lock, CreditCard, QrCode, Smartphone, ExternalLink, Truck, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useToast } from '../context/ToastContext';
 import { playSuccessSound, initializeAudio } from '../utils/audio';
+
+// Load Cashfree SDK dynamically
+const loadCashfree = () => {
+    return new Promise((resolve) => {
+        if (window.Cashfree) {
+            resolve(window.Cashfree);
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+        script.onload = () => resolve(window.Cashfree);
+        document.body.appendChild(script);
+    });
+};
 
 const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, shippingAddress, clearCart, onDisplaySuccess, validateForm }) => {
     const stripe = useStripe();
@@ -14,7 +28,7 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('card'); // 'card', 'upi', 'cod'
+    const [activeTab, setActiveTab] = useState('cashfree'); // 'cashfree', 'card', 'upi', 'cod'
     const [upiId, setUpiId] = useState('');
     const [isCodAvailable, setIsCodAvailable] = useState(false);
     const [codUnavailableReason, setCodUnavailableReason] = useState('');
@@ -206,6 +220,84 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
         }
     };
 
+    // Cashfree Payment Handler - Real UPI, Cards, Net Banking, Wallets
+    const handleCashfreePayment = async (e) => {
+        e.preventDefault();
+        initializeAudio();
+        if (!validateShipping()) return;
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            // First create the order in our database
+            const createdOrder = await createOrder('Cashfree');
+
+            // Create Cashfree payment session
+            const { data: cashfreeData } = await api.post('/payments/cashfree/create-order', {
+                orderId: `ORDER_${createdOrder._id}`,
+                amount: createdOrder.totalPrice,
+                customerDetails: {
+                    customerId: user._id,
+                    name: user.name,
+                    email: user.email,
+                    phone: shippingAddress.phoneNumber || user.phoneNumber
+                }
+            });
+
+            // Load Cashfree SDK
+            const cashfree = await loadCashfree();
+            const checkoutInstance = cashfree.checkout({
+                paymentSessionId: cashfreeData.paymentSessionId
+            });
+
+            // Open Cashfree payment popup
+            checkoutInstance.open({
+                onSuccess: async (data) => {
+                    console.log("Payment Success:", data);
+                    // Verify payment on backend
+                    try {
+                        const verifyResponse = await api.post('/payments/cashfree/verify', {
+                            orderId: `ORDER_${createdOrder._id}`
+                        });
+
+                        if (verifyResponse.data.verified) {
+                            playSuccessSound();
+                            showToast("Payment successful! Order placed.", "success");
+                            clearCart();
+                            setTimeout(() => {
+                                onDisplaySuccess();
+                            }, 500);
+                        }
+                    } catch (verifyErr) {
+                        console.error("Verification failed:", verifyErr);
+                        showToast("Payment verification pending. We'll update your order soon.", "info");
+                        clearCart();
+                        onDisplaySuccess();
+                    }
+                },
+                onFailure: (data) => {
+                    console.error("Payment Failed:", data);
+                    setError(data.message || "Payment failed. Please try again.");
+                    showToast("Payment failed. Please try again.", "error");
+                    // Cancel the order since payment failed
+                    api.put(`/orders/${createdOrder._id}/cancel`, { reason: 'Payment Failed' }).catch(console.error);
+                },
+                onClose: () => {
+                    console.log("Payment popup closed");
+                    setLoading(false);
+                }
+            });
+
+        } catch (err) {
+            console.error("Cashfree Payment Error:", err);
+            const msg = err.response?.data?.message || err.message || "Failed to initiate payment";
+            setError(msg);
+            showToast(msg, "error");
+            setLoading(false);
+        }
+    };
+
     const markOrderPaid = async (orderId, txId, provider) => {
         const paymentResult = {
             id: txId,
@@ -306,30 +398,70 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
             </AnimatePresence>
 
             {/* Tabs */}
-            <div className="flex p-1 bg-gray-100 dark:bg-slate-700 rounded-xl">
+            <div className="flex flex-wrap p-1 bg-gray-100 dark:bg-slate-700 rounded-xl gap-1">
                 <button
-                    onClick={() => { setActiveTab('card'); setError(null); }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'card' ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                    onClick={() => { setActiveTab('cashfree'); setError(null); }}
+                    className={`flex-1 min-w-[80px] flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'cashfree' ? 'bg-white dark:bg-slate-600 shadow-sm text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                 >
-                    <CreditCard className="h-4 w-4" /> Card
+                    <Wallet className="h-4 w-4" /> Pay Now
                 </button>
                 <button
-                    onClick={() => { setActiveTab('upi'); setError(null); }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'upi' ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                    onClick={() => { setActiveTab('card'); setError(null); }}
+                    className={`flex-1 min-w-[80px] flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'card' ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                 >
-                    <QrCode className="h-4 w-4" /> UPI / QR
+                    <CreditCard className="h-4 w-4" /> Card
                 </button>
                 {isCodAvailable && (
                     <button
                         onClick={() => { setActiveTab('cod'); setError(null); }}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'cod' ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                        className={`flex-1 min-w-[80px] flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'cod' ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                     >
                         <Truck className="h-4 w-4" /> COD
                     </button>
                 )}
             </div>
 
-            {activeTab === 'card' ? (
+            {/* Cashfree Payment - UPI, Cards, Net Banking, Wallets */}
+            {activeTab === 'cashfree' ? (
+                <form onSubmit={handleCashfreePayment} className="space-y-6 fade-in">
+                    <div className="p-6 border-2 border-dashed border-green-200 dark:border-green-800 rounded-xl bg-green-50/30 dark:bg-green-900/20">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-4 rounded-2xl shadow-lg mb-4">
+                                <Wallet className="h-10 w-10 text-white" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Pay with Any Method</h3>
+                            <p className="text-sm text-slate-600 dark:text-gray-400 mb-4">
+                                UPI • Credit/Debit Cards • Net Banking • Wallets
+                            </p>
+                            <div className="flex gap-2 flex-wrap justify-center">
+                                <span className="px-2 py-1 bg-white dark:bg-slate-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 shadow-sm">Google Pay</span>
+                                <span className="px-2 py-1 bg-white dark:bg-slate-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 shadow-sm">PhonePe</span>
+                                <span className="px-2 py-1 bg-white dark:bg-slate-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 shadow-sm">Paytm</span>
+                                <span className="px-2 py-1 bg-white dark:bg-slate-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 shadow-sm">Visa</span>
+                                <span className="px-2 py-1 bg-white dark:bg-slate-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 shadow-sm">Mastercard</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs rounded-lg border border-blue-100 dark:border-blue-900/30 text-center">
+                        🔒 Your payment is secured by Cashfree Payments (RBI Licensed)
+                    </div>
+
+                    {error && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-sm rounded-lg border border-red-100 dark:border-red-900">
+                            {error}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                        {loading ? 'Opening Payment...' : `Pay ₹${finalTotal}`}
+                    </button>
+                </form>
+            ) : activeTab === 'card' ? (
                 <form onSubmit={handleCardPayment} className="space-y-6 fade-in">
                     <div className="p-4 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50/50 dark:bg-slate-700/30">
                         <div className="flex items-center gap-2 mb-4 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -364,49 +496,6 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
                         className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {loading ? 'Processing...' : `Pay ₹${finalTotal}`}
-                    </button>
-                </form>
-            ) : activeTab === 'upi' ? (
-                <form onSubmit={handleUPIPayment} className="space-y-6 fade-in">
-                    <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-indigo-200 dark:border-indigo-800 rounded-xl bg-indigo-50/30 dark:bg-indigo-900/20">
-                        <div className="bg-white p-4 rounded-xl shadow-sm mb-4">
-                            <QRCodeSVG value={upiString} size={180} />
-                        </div>
-                        <p className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Scan to Pay</p>
-                        <p className="text-xs text-slate-500 dark:text-gray-400">Supported by all UPI Apps</p>
-                    </div>
-
-                    <div className="space-y-3">
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Smartphone className="h-5 w-5 text-gray-400" />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Enter your UPI ID (e.g. name@upi)"
-                                className="pl-10 w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:text-white dark:placeholder-gray-400"
-                                value={upiId}
-                                onChange={(e) => setUpiId(e.target.value)}
-                                required
-                            />
-                        </div>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 text-center">
-                            Note: This is a demo. No real money will be deducted via UPI.
-                        </p>
-                    </div>
-
-                    {error && (
-                        <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-sm rounded-lg border border-red-100 dark:border-red-900">
-                            {error}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                        {loading ? 'Processing...' : `Verify & Pay ₹${finalTotal}`}
                     </button>
                 </form>
             ) : activeTab === 'cod' ? (

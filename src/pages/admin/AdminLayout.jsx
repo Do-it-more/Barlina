@@ -27,7 +27,8 @@ import {
     ChevronRight,
     PanelLeftClose,
     PanelLeftOpen,
-    Activity
+    Activity,
+    Wallet
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -144,12 +145,14 @@ const AdminLayoutContent = () => {
         '/admin/products': 'products',
         '/admin/categories': 'categories',
         '/admin/coupons': 'coupons',
-        '/admin/settings': 'settings'
+        '/admin/settings': 'settings',
+        '/admin/finance': 'finance'
     };
 
     const hasPermission = (item) => {
         if (isSuperAdmin) return true;
         if (item.path === '/admin/dashboard') return true;
+        // if (item.path === '/admin/finance') return true; // REMOVED: Now managed by RBAC permissions
         if (item.path === '/admin/team-chat') return true; // Team Chat accessible to all admins
         if (item.path === '/admin/users') return false;
         const requiredPerm = permissionMap[item.path];
@@ -366,6 +369,18 @@ const AdminLayoutContent = () => {
                             <Home className="h-5 w-5 min-w-[20px]" />
                             {(!isSidebarCollapsed || isMobileMenuOpen) && <span className="font-medium ml-3 whitespace-nowrap">Switch to Shop</span>}
                         </Link>
+
+                        {isSuperAdmin && (
+                            <Link
+                                to="/finance"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                title={isSidebarCollapsed ? 'Switch to Finance' : ''}
+                                className={`w-full flex items-center ${isSidebarCollapsed ? 'md:justify-center px-0' : 'justify-start px-4'} py-3 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors mt-2`}
+                            >
+                                <Wallet className="h-5 w-5 min-w-[20px]" />
+                                {(!isSidebarCollapsed || isMobileMenuOpen) && <span className="font-medium ml-3 whitespace-nowrap">Switch to Finance</span>}
+                            </Link>
+                        )}
 
                         <button
                             onClick={() => { logout(); setIsMobileMenuOpen(false); }}

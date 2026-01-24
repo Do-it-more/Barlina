@@ -19,7 +19,8 @@ const PermissionScreen = () => {
         { key: 'returns', label: 'Process Returns', desc: 'Approve/Reject returns' },
         { key: 'coupons', label: 'Manage Coupons', desc: 'Create discount codes' },
         { key: 'settings', label: 'System Settings', desc: 'Modify site configuration' },
-        { key: 'inquiries', label: 'View Inquiries', desc: 'Read contact form messages' }
+        { key: 'inquiries', label: 'View Inquiries', desc: 'Read contact form messages' },
+        { key: 'finance', label: 'Finance Access', desc: 'Access Financial Dashboard' }
     ];
 
     const fetchAdmins = async () => {

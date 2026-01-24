@@ -50,8 +50,14 @@ const Login = () => {
             setLoading(true);
             setError('');
             // When using flow: 'auth-code', the code is in response.code
-            await googleLogin(response.code);
-            navigate('/');
+            const data = await googleLogin(response.code);
+
+            // Check if phone verification is required
+            if (data.phoneVerificationRequired) {
+                navigate('/verify-phone');
+            } else {
+                navigate('/');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Google login failed');
         } finally {

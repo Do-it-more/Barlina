@@ -65,7 +65,8 @@ const UserListScreen = () => {
             products: false,
             categories: false,
             coupons: false,
-            settings: false
+            settings: false,
+            finance: false
         },
         assignedCategories: [] // New State
     });
@@ -96,7 +97,26 @@ const UserListScreen = () => {
         fetchData();
     }, [currentUser, showToast]);
 
-    // ... (deleteHandler remains same) ...
+    // Delete Handler
+    const deleteHandler = async (id) => {
+        // Prevent deleting yourself
+        if (id === currentUser._id) {
+            showToast("You cannot delete your own account", "error");
+            return;
+        }
+
+        const isConfirmed = await confirm("Delete User", "Are you sure you want to delete this user? This action cannot be undone.");
+        if (!isConfirmed) return;
+
+        try {
+            await api.delete(`/users/${id}`);
+            setUsers(users.filter(u => u._id !== id));
+            showToast("User deleted successfully", "success");
+        } catch (error) {
+            console.error("Delete error:", error);
+            showToast(error.response?.data?.message || "Failed to delete user", "error");
+        }
+    };
 
     const openAccessModal = (user) => {
         if (currentUser?.role !== 'super_admin') {
@@ -117,7 +137,8 @@ const UserListScreen = () => {
                 products: user.permissions?.products || false,
                 categories: user.permissions?.categories || false,
                 coupons: user.permissions?.coupons || false,
-                settings: user.permissions?.settings || false
+                settings: user.permissions?.settings || false,
+                finance: user.permissions?.finance || false
             },
             assignedCategories: user.assignedCategories || [] // Populate
         });
@@ -344,19 +365,11 @@ const UserListScreen = () => {
                                                 {user.permissions?.products && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded">Products</span>}
                                                 {user.permissions?.categories && <span className="text-[10px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">Cats</span>}
                                                 {user.permissions?.coupons && <span className="text-[10px] bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded">Coupons</span>}
+                                                {user.permissions?.finance && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">Finance</span>}
                                             </div>
                                         )}
                                     </td>
-                                    <td className="p-4 text-right flex items-center justify-end gap-2">
-                                        {(user.role === 'admin' || user.role === 'super_admin') && user._id !== currentUser._id && (
-                                            <button
-                                                onClick={() => openChat(user)}
-                                                className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
-                                                title="Message Admin"
-                                            >
-                                                <MessageSquare className="h-4 w-4" />
-                                            </button>
-                                        )}
+                                    <td className="p-4 text-right">
                                         <button
                                             onClick={() => deleteHandler(user._id)}
                                             className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
@@ -404,28 +417,17 @@ const UserListScreen = () => {
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-slate-700">
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => openAccessModal(user)}
-                                    disabled={currentUser?.role !== 'super_admin'}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${user.role === 'admin'
-                                        ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                        : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300'
-                                        } ${currentUser?.role !== 'super_admin' ? 'opacity-80' : ''}`}
-                                >
-                                    <ShieldCheck className="h-4 w-4" />
-                                    {user.role === 'admin' ? 'Manage Access' : 'Assign Role'}
-                                </button>
-
-                                {(user.role === 'admin' || user.role === 'super_admin') && user._id !== currentUser._id && (
-                                    <button
-                                        onClick={() => openChat(user)}
-                                        className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
-                                    >
-                                        <MessageSquare className="h-5 w-5" />
-                                    </button>
-                                )}
-                            </div>
+                            <button
+                                onClick={() => openAccessModal(user)}
+                                disabled={currentUser?.role !== 'super_admin'}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${user.role === 'admin'
+                                    ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                    : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300'
+                                    } ${currentUser?.role !== 'super_admin' ? 'opacity-80' : ''}`}
+                            >
+                                <ShieldCheck className="h-4 w-4" />
+                                {user.role === 'admin' ? 'Manage Access' : 'Assign Role'}
+                            </button>
 
                             <button
                                 onClick={() => deleteHandler(user._id)}
@@ -521,6 +523,7 @@ const UserListScreen = () => {
                                         { key: 'coupons', label: 'Coupon Management', desc: 'Manage discount coupons' },
                                         { key: 'complaints', label: 'Complaint Management', desc: 'Resolve user complaints & tickets' },
                                         { key: 'inquiries', label: 'Inquiry Management', desc: 'View and reply to contact forms' },
+                                        { key: 'finance', label: 'Finance Access', desc: 'Access to financial records & dashboard' },
                                         { key: 'settings', label: 'Store Settings', desc: 'View and modify global settings' },
                                     ].map((perm) => (
                                         <div

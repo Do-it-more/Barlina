@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Loader } from 'lucide-react';
 
-const ProtectedRoute = ({ adminOnly = false }) => {
+const ProtectedRoute = ({ children, adminOnly = false }) => {
     const { user, loading } = useAuth();
     const location = useLocation();
 
@@ -31,7 +31,7 @@ const ProtectedRoute = ({ adminOnly = false }) => {
         return <Navigate to="/" replace />;
     }
 
-    return <Outlet />;
+    return children ? children : <Outlet />;
 };
 
 export default ProtectedRoute;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
-import { Plus, Trash2, Tag, Calendar, Percent } from 'lucide-react';
+import { Plus, Trash2, Tag, Calendar, Percent, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 
@@ -63,6 +63,21 @@ const CouponListScreen = () => {
             showToast("Coupon created successfully", "success");
         } catch (error) {
             showToast(error.response?.data?.message || 'Error creating coupon', "error");
+        }
+    };
+
+    const handleToggleBanner = async (coupon) => {
+        const newValue = !coupon.showInBanner;
+        // Optimistic update
+        setCoupons(coupons.map(c => c._id === coupon._id ? { ...c, showInBanner: newValue } : c));
+
+        try {
+            await api.put(`/coupons/${coupon._id}`, { showInBanner: newValue });
+            showToast(newValue ? 'Coupon will appear in Flash Deals' : 'Coupon hidden from Flash Deals', 'success');
+        } catch (error) {
+            // Revert on error
+            setCoupons(coupons.map(c => c._id === coupon._id ? { ...c, showInBanner: !newValue } : c));
+            showToast('Failed to update coupon visibility', 'error');
         }
     };
 
@@ -137,6 +152,7 @@ const CouponListScreen = () => {
                             <th className="px-6 py-4 font-bold">Discount</th>
                             <th className="px-6 py-4 font-bold">Expires On</th>
                             <th className="px-6 py-4 font-bold">Status</th>
+                            <th className="px-6 py-4 font-bold text-center">Show in Banner</th>
                             <th className="px-6 py-4 font-bold text-right">Actions</th>
                         </tr>
                     </thead>
@@ -179,6 +195,22 @@ const CouponListScreen = () => {
                                         </span>
                                     )}
                                 </td>
+                                <td className="px-6 py-4 text-center">
+                                    <button
+                                        onClick={() => handleToggleBanner(coupon)}
+                                        className={`p-2 rounded-xl transition-all ${coupon.showInBanner !== false
+                                                ? 'text-green-600 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50'
+                                                : 'text-gray-400 bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600'
+                                            }`}
+                                        title={coupon.showInBanner !== false ? 'Visible in Flash Deals' : 'Hidden from Flash Deals'}
+                                    >
+                                        {coupon.showInBanner !== false ? (
+                                            <Eye className="h-5 w-5" />
+                                        ) : (
+                                            <EyeOff className="h-5 w-5" />
+                                        )}
+                                    </button>
+                                </td>
                                 <td className="px-6 py-4 text-right">
                                     <button
                                         onClick={() => handleDelete(coupon._id)}
@@ -192,7 +224,7 @@ const CouponListScreen = () => {
                         ))}
                         {coupons.length === 0 && !loading && (
                             <tr>
-                                <td colSpan="5" className="px-6 py-12 text-center">
+                                <td colSpan="6" className="px-6 py-12 text-center">
                                     <div className="flex flex-col items-center gap-2 text-gray-500">
                                         <Tag className="h-10 w-10 opacity-20" />
                                         <p className="font-medium text-lg">No Coupons Found</p>

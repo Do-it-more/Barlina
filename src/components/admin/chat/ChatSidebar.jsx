@@ -5,6 +5,14 @@ import { useAuth } from '../../../context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import api from '../../../services/api';
 
+// Helper to get full image URL
+const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/api\/?$/, '');
+    return `${baseUrl}${url}`;
+};
+
 const ChatSidebar = () => {
     const { chats, setActiveChat, fetchChats, deleteChat, unreadCounts, clearChatUnreadCount } = useAdminChat();
     const { user: currentUser } = useAuth();
@@ -177,7 +185,7 @@ const ChatSidebar = () => {
             </div>
 
             {/* Chat List - Larger touch targets on mobile */}
-            <div className="flex-1 overflow-y-auto pb-20">
+            <div className="flex-1 overflow-y-auto pb-20 scrollbar-hide">
                 {filteredChats.length === 0 ? (
                     <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">
                         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
@@ -193,26 +201,29 @@ const ChatSidebar = () => {
                             onContextMenu={(e) => handleContextMenu(e, chat._id)}
                             className="relative flex items-center gap-3 px-4 py-4 md:py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors border-b border-gray-100 dark:border-slate-800/50 last:border-0 active:bg-indigo-50 dark:active:bg-indigo-900/20 group"
                         >
-                            {/* Delete button on hover */}
-                            <button
-                                onClick={(e) => { e.stopPropagation(); showDeleteModal(chat._id); }}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/40"
-                                title={chat.type === 'group' ? 'Delete Group' : 'Delete Chat'}
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
                             {/* Avatar - Larger on mobile */}
                             <div className="relative flex-shrink-0">
                                 <div className="w-14 h-14 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-800 shadow-sm">
                                     {chat.chatAvatar ? (
-                                        <img src={chat.chatAvatar} alt={chat.chatName} className="w-full h-full object-cover" />
-                                    ) : chat.type === 'group' ? (
-                                        <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                                    ) : (
-                                        <span className="text-indigo-600 font-bold text-lg dark:text-indigo-400">
-                                            {chat.chatName.charAt(0)}
-                                        </span>
-                                    )}
+                                        <img
+                                            src={getImageUrl(chat.chatAvatar)}
+                                            alt={chat.chatName}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                // Hide broken image and show fallback
+                                                e.target.style.display = 'none';
+                                                e.target.nextElementSibling?.classList.remove('hidden');
+                                            }}
+                                        />
+                                    ) : null}
+                                    {/* Fallback - always rendered but hidden if image exists */}
+                                    <span className={`text-indigo-600 font-bold text-lg dark:text-indigo-400 ${chat.chatAvatar ? 'hidden' : ''}`}>
+                                        {chat.type === 'group' ? (
+                                            <Users className="w-6 h-6" />
+                                        ) : (
+                                            chat.chatName?.charAt(0) || '?'
+                                        )}
+                                    </span>
                                 </div>
                                 {/* Online Status Dot (only for private chats) */}
                                 {chat.type === 'private' && chat.isOnline && (
@@ -223,7 +234,7 @@ const ChatSidebar = () => {
                             {/* Info */}
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-center mb-1">
-                                    <div className="flex items-center gap-2 min-w-0">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
                                         <h3 className="font-semibold text-slate-800 dark:text-gray-200 truncate text-[15px] md:text-sm">
                                             {chat.chatName}
                                         </h3>
@@ -233,11 +244,21 @@ const ChatSidebar = () => {
                                             </span>
                                         )}
                                     </div>
-                                    {chat.lastMessageAt && (
-                                        <span className="text-[10px] text-gray-400 flex-shrink-0 ml-2">
-                                            {formatDistanceToNow(new Date(chat.lastMessageAt), { addSuffix: false }).replace('about', '')}
-                                        </span>
-                                    )}
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        {chat.lastMessageAt && (
+                                            <span className="text-[10px] text-gray-400 group-hover:hidden">
+                                                {formatDistanceToNow(new Date(chat.lastMessageAt), { addSuffix: false }).replace('about', '')}
+                                            </span>
+                                        )}
+                                        {/* Delete button - shows on hover, hides timestamp */}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); showDeleteModal(chat._id); }}
+                                            className="p-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/40"
+                                            title={chat.type === 'group' ? 'Delete Group' : 'Delete Chat'}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="flex justify-between items-center">
@@ -336,7 +357,7 @@ const ChatSidebar = () => {
                                 />
                             </div>
 
-                            <div className="flex-1 overflow-y-auto">
+                            <div className="flex-1 overflow-y-auto scrollbar-hide">
                                 <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Available Contacts</p>
                                 {filteredPickerUsers.map(u => (
                                     <div
@@ -344,12 +365,19 @@ const ChatSidebar = () => {
                                         onClick={() => handleStartPrivateChat(u._id)}
                                         className="flex items-center gap-3 p-3 px-4 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
                                     >
-                                        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-slate-700 flex items-center justify-center border border-gray-200 dark:border-slate-600">
+                                        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-slate-700 flex items-center justify-center border border-gray-200 dark:border-slate-600 overflow-hidden">
                                             {u.profilePhoto ? (
-                                                <img src={u.profilePhoto} alt={u.name} className="w-full h-full object-cover rounded-full" />
-                                            ) : (
-                                                <span className="font-bold text-indigo-600 dark:text-indigo-400">{u.name.charAt(0)}</span>
-                                            )}
+                                                <img
+                                                    src={getImageUrl(u.profilePhoto)}
+                                                    alt={u.name}
+                                                    className="w-full h-full object-cover rounded-full"
+                                                    onError={(e) => {
+                                                        e.target.style.display = 'none';
+                                                        e.target.nextElementSibling?.classList.remove('hidden');
+                                                    }}
+                                                />
+                                            ) : null}
+                                            <span className={`font-bold text-indigo-600 dark:text-indigo-400 ${u.profilePhoto ? 'hidden' : ''}`}>{u.name.charAt(0)}</span>
                                         </div>
                                         <div>
                                             <p className="font-medium text-slate-800 dark:text-white">{u.name}</p>
@@ -419,7 +447,7 @@ const ChatSidebar = () => {
                                 </div>
                             )}
 
-                            <div className="flex-1 overflow-y-auto">
+                            <div className="flex-1 overflow-y-auto scrollbar-hide">
                                 <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Team Members</p>
                                 {filteredPickerUsers.map(u => {
                                     const isSelected = selectedMembers.includes(u._id);
@@ -430,12 +458,19 @@ const ChatSidebar = () => {
                                             className={`flex items-center gap-3 p-3 px-4 cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-slate-800'
                                                 }`}
                                         >
-                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-slate-700 flex items-center justify-center border border-gray-200 dark:border-slate-600 relative">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-slate-700 flex items-center justify-center border border-gray-200 dark:border-slate-600 relative overflow-hidden">
                                                 {u.profilePhoto ? (
-                                                    <img src={u.profilePhoto} alt={u.name} className="w-full h-full object-cover rounded-full" />
-                                                ) : (
-                                                    <span className="font-bold text-indigo-600 dark:text-indigo-400">{u.name.charAt(0)}</span>
-                                                )}
+                                                    <img
+                                                        src={getImageUrl(u.profilePhoto)}
+                                                        alt={u.name}
+                                                        className="w-full h-full object-cover rounded-full"
+                                                        onError={(e) => {
+                                                            e.target.style.display = 'none';
+                                                            e.target.nextElementSibling?.classList.remove('hidden');
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <span className={`font-bold text-indigo-600 dark:text-indigo-400 ${u.profilePhoto ? 'hidden' : ''}`}>{u.name.charAt(0)}</span>
                                             </div>
                                             <div className="flex-1">
                                                 <p className="font-medium text-slate-800 dark:text-white">{u.name}</p>

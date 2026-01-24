@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import io from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import api from '../services/api';
@@ -15,6 +15,14 @@ export const AdminChatProvider = ({ children }) => {
     const [hasUnreadMessages, setHasUnreadMessages] = useState(false); // For red dot notification in sidebar
     const [unreadCounts, setUnreadCounts] = useState({}); // Per-chat unread counts { chatId: count }
     const [isChatOpen, setIsChatOpen] = useState(false); // Global toggle for the widget
+
+    // Ref to track active chat ID for socket handlers (avoids stale closure)
+    const activeChatIdRef = useRef(null);
+
+    // Keep ref in sync with activeChat state
+    useEffect(() => {
+        activeChatIdRef.current = activeChat?._id?.toString() || null;
+    }, [activeChat]);
 
     // 1. Initialize Socket
     useEffect(() => {
@@ -140,20 +148,23 @@ export const AdminChatProvider = ({ children }) => {
         const msgChatId = (message.chat?._id || message.chat)?.toString();
         const senderId = message.sender?._id?.toString();
 
-        // If message is from someone else (not me), increment unread count
+        // If message is from someone else (not me), check if we should increment unread count
         if (senderId !== user?._id?.toString()) {
-            setHasUnreadMessages(true);
+            // Only increment unread count if this chat is NOT currently active
+            // Use the ref to get the current active chat ID (avoids stale closure)
+            const currentActiveChatId = activeChatIdRef.current;
 
-            // Increment unread count for this specific chat (only if not currently viewing it)
-            setUnreadCounts(prev => {
-                // Check if this chat is currently active
-                // We can't check activeChat directly here due to closure, so we always increment
-                // and the ChatWindow will clear it when opened
-                return {
-                    ...prev,
-                    [msgChatId]: (prev[msgChatId] || 0) + 1
-                };
-            });
+            if (msgChatId !== currentActiveChatId) {
+                setHasUnreadMessages(true);
+
+                // Increment unread count for this specific chat
+                setUnreadCounts(prev => {
+                    return {
+                        ...prev,
+                        [msgChatId]: (prev[msgChatId] || 0) + 1
+                    };
+                });
+            }
         }
 
         // Update the chat list order (move to top)
@@ -232,6 +243,42 @@ export const AdminChatProvider = ({ children }) => {
         }
     }, []);
 
+    // 8. Open Chat with a specific user (create if doesn't exist)
+    const openChat = useCallback(async (targetUser) => {
+        if (!targetUser || !targetUser._id) {
+            console.error('[Chat] Invalid target user');
+            return;
+        }
+
+        try {
+            // Check if a private chat already exists with this user
+            const existingChat = chats.find(chat =>
+                chat.type === 'private' &&
+                chat.partnerId?.toString() === targetUser._id?.toString()
+            );
+
+            if (existingChat) {
+                // Open existing chat
+                setActiveChat(existingChat);
+                setIsChatOpen(true);
+                clearChatUnreadCount(existingChat._id);
+            } else {
+                // Create a new private chat
+                const { data: newChat } = await api.post('/admin/chat', {
+                    type: 'private',
+                    memberId: targetUser._id
+                });
+
+                // Add to chats list
+                setChats(prev => [newChat, ...prev]);
+                setActiveChat(newChat);
+                setIsChatOpen(true);
+            }
+        } catch (error) {
+            console.error("Failed to open chat:", error);
+        }
+    }, [chats, clearChatUnreadCount]);
+
     return (
         <AdminChatContext.Provider value={{
             socket,
@@ -247,7 +294,8 @@ export const AdminChatProvider = ({ children }) => {
             isChatOpen,
             setIsChatOpen,
             fetchChats,
-            deleteChat
+            deleteChat,
+            openChat
         }}>
             {children}
         </AdminChatContext.Provider>

@@ -10,18 +10,18 @@ import { Truck, RotateCcw, ShieldCheck, Award, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const categories = [
-    { name: 'Just Arrived', image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', badge: 'New' },
-    { name: 'Home Improvement', image: 'https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', badge: 'Selling' },
-    { name: 'All Brands', image: 'https://images.unsplash.com/photo-1523293182086-7651a899d37f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', badge: 'Brand' },
-    { name: 'Electronics', image: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Kitchen', image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Gifts', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Gardening', image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: "Kid's Toys", image: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Winter Collection', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
+    { name: 'New Arrivals', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', badge: 'New' },
+    { name: 'Silk Sarees', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', badge: 'Selling' },
+    { name: 'Bridal Collection', image: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', badge: 'Bridal' },
+    { name: 'Designer Blouses', image: 'https://images.unsplash.com/photo-1583391733981-8498f288a5e4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
+    { name: 'Lehengas', image: 'https://images.unsplash.com/photo-1583391733981-8498f288a5e4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
+    { name: 'Kurtis', image: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
+    { name: 'Salwar Suits', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
     { name: 'Jewellery', image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Shop by Industry', image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Wedding Gifts', image: 'https://images.unsplash.com/photo-1544377193-33dcf4d68fb5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
+    { name: 'Festive Wear', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
+    { name: 'Cotton Sarees', image: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
+    { name: 'Accessories', image: 'https://images.unsplash.com/photo-1611085583191-a3b181a88401?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
+    { name: 'Wedding Collection', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
 ];
 
 const features = [

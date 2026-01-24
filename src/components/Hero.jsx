@@ -79,7 +79,7 @@ const Hero = () => {
                                     }
                                 }}
                             >
-                                {["Level", "Up", "Your"].map((word, i) => (
+                                {["Elevate", "Your"].map((word, i) => (
                                     <motion.span key={i} className="inline-block mr-3 md:mr-4" variants={{
                                         hidden: { opacity: 0, y: 20 },
                                         visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
@@ -89,7 +89,7 @@ const Hero = () => {
                                 ))}
                                 <br />
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 animate-gradient-x inline-block">
-                                    {["Style", "Game"].map((word, i) => (
+                                    {["Ethnic", "Elegance"].map((word, i) => (
                                         <motion.span key={i} className="inline-block mr-3 md:mr-4" variants={{
                                             hidden: { opacity: 0, y: 20 },
                                             visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
@@ -103,8 +103,8 @@ const Hero = () => {
 
                         {/* Description */}
                         <motion.p variants={itemVariants} className="text-lg text-slate-600 dark:text-slate-300 max-w-lg leading-relaxed font-medium">
-                            Explore our curated collection of premium tech and lifestyle gear.
-                            Enjoy <span className="text-slate-900 dark:text-white font-bold bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-200 px-1 rounded">50% off</span> on top brands this week.
+                            Discover exquisite handcrafted sarees, ethnic wear, and traditional fashion.
+                            Enjoy <span className="text-slate-900 dark:text-white font-bold bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-200 px-1 rounded">50% off</span> on premium collections this week.
                         </motion.p>
 
                         {/* Buttons */}
@@ -161,8 +161,8 @@ const Hero = () => {
                     </motion.div>
 
                     {/* Right Image - Carousel with AnimatePresence */}
-                    <div className="relative hidden lg:block perspective-1000 h-[600px] w-full">
-                        <div className="relative w-full h-full rounded-[3rem] overflow-hidden shadow-2xl shadow-indigo-500/20 group bg-slate-200 dark:bg-slate-800">
+                    <div className="relative hidden lg:flex perspective-1000 h-[550px] w-full items-center justify-center order-2">
+                        <div className="relative w-full max-w-[450px] h-full rounded-[2rem] overflow-hidden shadow-2xl shadow-indigo-500/20 group bg-slate-200 dark:bg-slate-800">
                             {carouselImages.map((img, idx) => (
                                 <img
                                     key={idx}
@@ -172,7 +172,7 @@ const Hero = () => {
                                         e.target.style.backgroundColor = '#ccc'; // Fallback color
                                     }}
                                     alt={`Fashion Model ${idx + 1}`}
-                                    className={`absolute inset-0 w-full h-full object-contain transition-all duration-700 ease-in-out transform ${idx === currentImageIndex
+                                    className={`absolute inset-0 w-full h-full object-cover object-top transition-all duration-700 ease-in-out transform ${idx === currentImageIndex
                                         ? 'opacity-100 scale-100 z-10'
                                         : 'opacity-0 scale-110 z-0'
                                         }`}
@@ -193,8 +193,8 @@ const Hero = () => {
                         </div>
 
                         {/* Background Glow Element */}
-                        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[3rem] blur-lg opacity-30 -z-10 transform rotate-3 scale-105 animate-pulse-slow"></div>
-                        <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[3rem] blur-lg opacity-30 -z-10 transform -rotate-2 scale-105 animate-pulse-slow delay-1000"></div>
+                        <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[2rem] blur-2xl opacity-30 -z-10 transform rotate-3 scale-105 animate-pulse-slow"></div>
+                        <div className="absolute -inset-4 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[2rem] blur-2xl opacity-30 -z-10 transform -rotate-2 scale-105 animate-pulse-slow delay-1000"></div>
                     </div>
                 </div>
             </div>

@@ -1,9 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, MoreVertical, Check, CheckCheck, Trash2, X, Users, ArrowLeft } from 'lucide-react';
+import { Send, Paperclip, MoreVertical, Check, CheckCheck, Trash2, X, Users, ArrowLeft, AlertTriangle, CheckSquare, Square } from 'lucide-react';
 import { useAdminChat } from '../../../context/AdminChatContext';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../services/api';
 import { format } from 'date-fns';
+
+// Helper to get full image URL
+const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/api\/?$/, '');
+    return `${baseUrl}${url}`;
+};
 
 const ChatWindow = () => {
     const { activeChat, setActiveChat, socket } = useAdminChat();
@@ -16,6 +24,17 @@ const ChatWindow = () => {
     const [typingUser, setTypingUser] = useState(null);
     const [showMenu, setShowMenu] = useState(false); // Header Menu Toggle
     const [previewImage, setPreviewImage] = useState(null); // Image Preview Modal
+
+    // Multi-select state
+    const [isSelectMode, setIsSelectMode] = useState(false);
+    const [selectedMessages, setSelectedMessages] = useState([]);
+
+    // Delete modal state
+    const [deleteModal, setDeleteModal] = useState({
+        show: false,
+        messageIds: [],
+        canDeleteForEveryone: false // true if I own all selected messages or I'm SuperAdmin
+    });
 
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -44,6 +63,8 @@ const ChatWindow = () => {
         fetchMessages();
         setLoading(true); // Reset loading state on chat switch
         setShowMenu(false); // Close menu on switch
+        setIsSelectMode(false); // Exit select mode on chat switch
+        setSelectedMessages([]);
 
         // Join Room Helper - ensure string format
         const joinRoom = () => {
@@ -107,7 +128,18 @@ const ChatWindow = () => {
         };
 
         const handleMessageUpdate = (updatedMsg) => {
-            setMessages(prev => prev.map(m => m._id?.toString() === updatedMsg._id?.toString() ? updatedMsg : m));
+            setMessages(prev => prev.map(m => {
+                if (m._id?.toString() === updatedMsg._id?.toString()) {
+                    // Merge: preserve original sender info if updated message doesn't have it fully populated
+                    return {
+                        ...m,
+                        ...updatedMsg,
+                        // Ensure sender is preserved - use updated if populated, otherwise keep original
+                        sender: (updatedMsg.sender && updatedMsg.sender._id) ? updatedMsg.sender : m.sender
+                    };
+                }
+                return m;
+            }));
         };
 
         const handleMessagesRead = ({ chatId, userId, readAt }) => {
@@ -145,11 +177,19 @@ const ChatWindow = () => {
             }
         };
 
+        // Listen for message deletion
+        const handleMessageDeleted = ({ messageId, chatId: deletedChatId }) => {
+            if (activeChatId === deletedChatId?.toString()) {
+                setMessages(prev => prev.filter(m => m._id?.toString() !== messageId?.toString()));
+            }
+        };
+
         socket.on('receive_message', handleReceiveMessage);
         socket.on('message_update', handleMessageUpdate); // For global deletes
         socket.on('messages_read', handleMessagesRead);
         socket.on('typing', handleTyping);
         socket.on('stop_typing', handleStopTyping);
+        socket.on('message_deleted', handleMessageDeleted);
 
         // Mark existing unread messages as read on mount
         api.put(`/admin/chat/${activeChatId}/read`).catch(err => console.error("Initial read mark failed", err));
@@ -160,6 +200,7 @@ const ChatWindow = () => {
             socket.off('messages_read', handleMessagesRead);
             socket.off('typing', handleTyping);
             socket.off('stop_typing', handleStopTyping);
+            socket.off('message_deleted', handleMessageDeleted);
         };
     }, [socket, activeChat, currentUser._id]);
 
@@ -240,32 +281,98 @@ const ChatWindow = () => {
 
     // 6. Action Handlers (Clear/Delete)
     const handleClearChat = async () => {
-        if (!window.confirm("Are you sure you want to clear this chat history?")) return;
-
         try {
-            await api.post(`/admin/chat/${activeChat._id}/clear`, { global: false }); // Always local clear by default for safety
-            setMessages([]); // Clear locally immediately
+            await api.post(`/admin/chat/${activeChat._id}/clear`, { global: false });
+            setMessages([]);
             setShowMenu(false);
         } catch (error) {
-            alert("Failed to clear chat");
+            console.error("Failed to clear chat", error);
         }
     };
 
-    const handleDeleteMessage = async (msgId, global = false) => {
-        if (!window.confirm("Delete this message?")) return;
+    // Toggle message selection
+    const toggleMessageSelection = (msgId) => {
+        setSelectedMessages(prev => {
+            if (prev.includes(msgId)) {
+                return prev.filter(id => id !== msgId);
+            } else {
+                return [...prev, msgId];
+            }
+        });
+    };
+
+    // Enter/Exit select mode
+    const toggleSelectMode = () => {
+        if (isSelectMode) {
+            setSelectedMessages([]);
+        }
+        setIsSelectMode(!isSelectMode);
+    };
+
+    // Open delete modal for single message
+    const openDeleteModalSingle = (msgId, isMyMessage) => {
+        setDeleteModal({
+            show: true,
+            messageIds: [msgId],
+            canDeleteForEveryone: isMyMessage || iAmSuperAdmin
+        });
+    };
+
+    // Open delete modal for multiple selected messages
+    const openDeleteModalMultiple = () => {
+        if (selectedMessages.length === 0) return;
+
+        // Check if all selected messages are mine (or I'm SuperAdmin)
+        const allMine = selectedMessages.every(msgId => {
+            const msg = messages.find(m => m._id === msgId);
+            return msg?.sender._id === currentUser._id;
+        });
+
+        setDeleteModal({
+            show: true,
+            messageIds: selectedMessages,
+            canDeleteForEveryone: allMine || iAmSuperAdmin
+        });
+    };
+
+    // Handle delete with option
+    const handleDeleteMessages = async (forEveryone = false) => {
+        const { messageIds } = deleteModal;
 
         try {
-            await api.delete(`/admin/chat/message/${msgId}`, { data: { global } });
+            // Delete each message
+            for (const msgId of messageIds) {
+                await api.delete(`/admin/chat/message/${msgId}`, { data: { global: forEveryone } });
 
-            if (global) {
-                // Socket update will handle it
-            } else {
-                // Remove locally
-                setMessages(prev => prev.filter(m => m._id !== msgId));
+                if (!forEveryone) {
+                    // Remove locally for "delete for me"
+                    setMessages(prev => prev.filter(m => m._id !== msgId));
+                }
             }
+
+            // If deleting for everyone, socket will handle UI update
+            if (forEveryone) {
+                setMessages(prev => prev.map(m => {
+                    if (messageIds.includes(m._id)) {
+                        return { ...m, isDeletedGlobally: true, content: '' };
+                    }
+                    return m;
+                }));
+            }
+
+            // Reset state
+            setDeleteModal({ show: false, messageIds: [], canDeleteForEveryone: false });
+            setSelectedMessages([]);
+            setIsSelectMode(false);
+
         } catch (error) {
             console.error("Delete failed", error);
         }
+    };
+
+    // Close delete modal
+    const closeDeleteModal = () => {
+        setDeleteModal({ show: false, messageIds: [], canDeleteForEveryone: false });
     };
 
     return (
@@ -275,56 +382,121 @@ const ChatWindow = () => {
                 <div className="flex items-center gap-3">
                     {/* Back Button (for mobile) - Larger touch target */}
                     <button
-                        onClick={() => setActiveChat(null)}
+                        onClick={() => {
+                            if (isSelectMode) {
+                                setIsSelectMode(false);
+                                setSelectedMessages([]);
+                            } else {
+                                setActiveChat(null);
+                            }
+                        }}
                         className="p-2 -ml-1 rounded-xl text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-800 transition-colors md:hidden active:bg-gray-200 dark:active:bg-slate-700"
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
 
                     {/* Chat Avatar - Larger on mobile */}
-                    <div className="w-11 h-11 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-800 shadow-sm">
-                        {activeChat?.chatAvatar ? (
-                            <img src={activeChat.chatAvatar} alt={activeChat.chatName} className="w-full h-full object-cover" />
-                        ) : activeChat?.type === 'group' ? (
-                            <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                        ) : (
-                            <span className="text-indigo-600 font-bold dark:text-indigo-400">
-                                {activeChat?.chatName?.charAt(0) || '?'}
-                            </span>
-                        )}
-                    </div>
-
-                    {/* Chat Name & Status */}
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-slate-800 dark:text-white text-[15px] md:text-sm">{activeChat?.chatName}</h3>
-                            {activeChat?.type === 'group' && (
-                                <span className="text-[10px] px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full">
-                                    Team
+                    {!isSelectMode ? (
+                        <>
+                            <div className="w-11 h-11 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-800 shadow-sm">
+                                {activeChat?.chatAvatar ? (
+                                    <img
+                                        src={getImageUrl(activeChat.chatAvatar)}
+                                        alt={activeChat.chatName}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            e.target.nextElementSibling?.classList.remove('hidden');
+                                        }}
+                                    />
+                                ) : null}
+                                {/* Fallback */}
+                                <span className={`text-indigo-600 font-bold dark:text-indigo-400 ${activeChat?.chatAvatar ? 'hidden' : ''}`}>
+                                    {activeChat?.type === 'group' ? (
+                                        <Users className="w-5 h-5" />
+                                    ) : (
+                                        activeChat?.chatName?.charAt(0) || '?'
+                                    )}
                                 </span>
-                            )}
+                            </div>
+
+                            {/* Chat Name & Status */}
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-semibold text-slate-800 dark:text-white text-[15px] md:text-sm">{activeChat?.chatName}</h3>
+                                    {activeChat?.type === 'group' && (
+                                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full">
+                                            Team
+                                        </span>
+                                    )}
+                                </div>
+                                {isTyping ? (
+                                    <p className="text-xs text-indigo-500 font-medium animate-pulse">
+                                        {typingUser?.name.split(' ')[0]} is typing...
+                                    </p>
+                                ) : activeChat?.type === 'group' ? (
+                                    <p className="text-xs text-gray-500">{activeChat?.members?.length || 0} members</p>
+                                ) : activeChat?.isOnline ? (
+                                    <p className="text-xs text-green-500">Online</p>
+                                ) : (
+                                    <p className="text-xs text-gray-400">Offline</p>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-semibold text-slate-800 dark:text-white">
+                                {selectedMessages.length} selected
+                            </span>
                         </div>
-                        {isTyping ? (
-                            <p className="text-xs text-indigo-500 font-medium animate-pulse">
-                                {typingUser?.name.split(' ')[0]} is typing...
-                            </p>
-                        ) : activeChat?.type === 'group' ? (
-                            <p className="text-xs text-gray-500">{activeChat?.members?.length || 0} members</p>
-                        ) : activeChat?.isOnline ? (
-                            <p className="text-xs text-green-500">Online</p>
-                        ) : (
-                            <p className="text-xs text-gray-400">Offline</p>
-                        )}
-                    </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2 relative">
-                    <button
-                        onClick={() => setShowMenu(!showMenu)}
-                        className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-                    >
-                        <MoreVertical className="w-5 h-5" />
-                    </button>
+                    {/* Multi-select mode buttons */}
+                    {isSelectMode ? (
+                        <>
+                            <button
+                                onClick={() => {
+                                    // Select all messages
+                                    setSelectedMessages(messages.map(m => m._id));
+                                }}
+                                className="px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                            >
+                                Select All
+                            </button>
+                            {selectedMessages.length > 0 && (
+                                <button
+                                    onClick={openDeleteModalMultiple}
+                                    className="p-2 text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
+                            )}
+                            <button
+                                onClick={toggleSelectMode}
+                                className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                onClick={toggleSelectMode}
+                                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                                title="Select Messages"
+                            >
+                                <CheckSquare className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => setShowMenu(!showMenu)}
+                                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <MoreVertical className="w-5 h-5" />
+                            </button>
+                        </>
+                    )}
 
                     {/* Dropdown Menu */}
                     {showMenu && (
@@ -341,7 +513,7 @@ const ChatWindow = () => {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-slate-950/50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-slate-950/50 scrollbar-hide">
                 {loading ? (
                     <div className="flex justify-center items-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -351,6 +523,7 @@ const ChatWindow = () => {
                         const isMe = msg.sender._id === currentUser._id;
                         const isSuperAdminSender = msg.sender.role === 'super_admin';
                         const showAvatar = !isMe && (index === 0 || messages[index - 1].sender._id !== msg.sender._id);
+                        const isSelected = selectedMessages.includes(msg._id);
 
                         // Permissions:
                         // 1. I can delete my own message (soft)
@@ -358,7 +531,23 @@ const ChatWindow = () => {
                         const canDelete = isMe || iAmSuperAdmin;
 
                         return (
-                            <div key={msg._id} className={`flex w-full group ${isMe ? 'justify-end' : 'justify-start'}`}>
+                            <div
+                                key={msg._id}
+                                className={`flex w-full group ${isMe ? 'justify-end' : 'justify-start'} ${isSelectMode ? 'cursor-pointer' : ''}`}
+                                onClick={() => isSelectMode && toggleMessageSelection(msg._id)}
+                            >
+                                {/* Checkbox for select mode */}
+                                {isSelectMode && (
+                                    <div className={`flex items-center mr-2 ${isMe ? 'order-last ml-2 mr-0' : ''}`}>
+                                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isSelected
+                                            ? 'bg-indigo-600 border-indigo-600'
+                                            : 'border-gray-300 dark:border-slate-600'
+                                            }`}>
+                                            {isSelected && <Check className="w-3 h-3 text-white" />}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className={`flex max-w-[75%] md:max-w-[60%] gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
 
                                     {/* Avatar for Them */}
@@ -366,9 +555,13 @@ const ChatWindow = () => {
                                         <div className="w-8 h-8 flex-shrink-0 flex flex-col items-center">
                                             {showAvatar ? (
                                                 <img
-                                                    src={msg.sender.profilePhoto || `https://ui-avatars.com/api/?name=${msg.sender.name}`}
+                                                    src={getImageUrl(msg.sender.profilePhoto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender.name)}&background=6366f1&color=fff`}
                                                     className="w-8 h-8 rounded-full border border-gray-200 dark:border-slate-700"
                                                     alt={msg.sender.name}
+                                                    onError={(e) => {
+                                                        // Fallback to ui-avatars on error
+                                                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender.name)}&background=6366f1&color=fff`;
+                                                    }}
                                                 />
                                             ) : <div className="w-8 h-8" />}
                                         </div>
@@ -391,6 +584,7 @@ const ChatWindow = () => {
                                                     ? 'bg-indigo-600 text-white rounded-tr-none'
                                                     : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-gray-200 border border-gray-100 dark:border-slate-700 rounded-tl-none'}
                                                 ${isSuperAdminSender && !isMe ? 'ring-2 ring-indigo-100 dark:ring-indigo-900/30' : ''}
+                                                ${isSelected ? 'ring-2 ring-indigo-500' : ''}
                                             `}
                                         >
                                             {/* Deleted Global Check */}
@@ -403,17 +597,17 @@ const ChatWindow = () => {
                                                     {/* Attachments */}
                                                     {msg.contentType === 'image' && (
                                                         <img
-                                                            src={msg.fileUrl}
+                                                            src={getImageUrl(msg.fileUrl)}
                                                             alt="Attachment"
                                                             className="max-w-full rounded-lg mb-2 cursor-pointer hover:opacity-90 transition-opacity"
-                                                            onClick={() => setPreviewImage(msg.fileUrl)}
+                                                            onClick={(e) => { e.stopPropagation(); setPreviewImage(getImageUrl(msg.fileUrl)); }}
                                                         />
                                                     )}
                                                     {msg.contentType === 'video' && (
-                                                        <video src={msg.fileUrl} controls className="max-w-full rounded-lg mb-2" />
+                                                        <video src={getImageUrl(msg.fileUrl)} controls className="max-w-full rounded-lg mb-2" onClick={(e) => e.stopPropagation()} />
                                                     )}
                                                     {msg.contentType === 'document' && (
-                                                        <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-black/10 p-2 rounded mb-2 hover:bg-black/20 transition-colors">
+                                                        <a href={getImageUrl(msg.fileUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-black/10 p-2 rounded mb-2 hover:bg-black/20 transition-colors" onClick={(e) => e.stopPropagation()}>
                                                             <Paperclip className="w-4 h-4" />
                                                             <span className="underline truncate max-w-[150px]">{msg.fileName || 'Document'}</span>
                                                         </a>
@@ -425,10 +619,10 @@ const ChatWindow = () => {
                                             )}
                                         </div>
 
-                                        {/* Delete Button (Hovers outside bubble) */}
-                                        {!msg.isDeletedGlobally && canDelete && (
+                                        {/* Delete Button (Hovers outside bubble) - Only when not in select mode */}
+                                        {!msg.isDeletedGlobally && canDelete && !isSelectMode && (
                                             <button
-                                                onClick={() => handleDeleteMessage(msg._id, iAmSuperAdmin)} // Pass global=true if SA
+                                                onClick={(e) => { e.stopPropagation(); openDeleteModalSingle(msg._id, isMe); }}
                                                 className={`
                                                     absolute top-1/2 -translate-y-1/2 p-1.5 bg-white dark:bg-slate-800 text-red-500 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10
                                                     ${isMe ? '-left-10' : '-right-10'}
@@ -505,6 +699,74 @@ const ChatWindow = () => {
                     </button>
                 </form>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteModal.show && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={closeDeleteModal}
+                    />
+
+                    {/* Modal */}
+                    <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95 duration-200">
+                        {/* Warning Icon */}
+                        <div className="flex justify-center mb-4">
+                            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <AlertTriangle className="w-8 h-8 text-red-500" />
+                            </div>
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-xl font-bold text-center text-slate-800 dark:text-white mb-2">
+                            Delete {deleteModal.messageIds.length > 1 ? `${deleteModal.messageIds.length} Messages` : 'Message'}?
+                        </h3>
+
+                        {/* Message */}
+                        <p className="text-center text-gray-500 dark:text-gray-400 mb-6 text-sm">
+                            {deleteModal.canDeleteForEveryone
+                                ? 'Choose how you want to delete this message:'
+                                : 'This will remove the message from your view only.'
+                            }
+                        </p>
+
+                        {/* Buttons */}
+                        <div className="space-y-3">
+                            {/* Delete for Everyone - Only if allowed */}
+                            {deleteModal.canDeleteForEveryone && (
+                                <button
+                                    onClick={() => handleDeleteMessages(true)}
+                                    className="w-full py-3 px-4 rounded-xl font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 transition-all shadow-lg shadow-red-500/30 flex items-center justify-center gap-2"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete for Everyone
+                                </button>
+                            )}
+
+                            {/* Delete for Me */}
+                            <button
+                                onClick={() => handleDeleteMessages(false)}
+                                className={`w-full py-3 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${deleteModal.canDeleteForEveryone
+                                    ? 'text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600'
+                                    : 'text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30'
+                                    }`}
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Delete for Me
+                            </button>
+
+                            {/* Cancel */}
+                            <button
+                                onClick={closeDeleteModal}
+                                className="w-full py-3 px-4 rounded-xl font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Image Preview Modal */}
             {previewImage && (

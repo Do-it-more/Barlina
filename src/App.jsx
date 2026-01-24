@@ -18,6 +18,16 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import OrderList from './pages/OrderList';
 import OrderDetail from './pages/OrderDetail';
+
+// Seller Components
+import SellerLayout from './pages/seller/SellerLayout';
+import SellerRegister from './pages/seller/SellerRegister';
+import SellerDashboard from './pages/seller/SellerDashboard';
+
+// Finance Components
+import FinanceLayout from './pages/finance/FinanceLayout';
+import FinancialDashboard from './pages/finance/FinancialDashboard'; // Reusing or new file? used new file
+
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
 import About from './pages/About';
@@ -26,6 +36,7 @@ import NotFound from './pages/NotFound';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import ReturnPolicy from './pages/ReturnPolicy';
+import PhoneVerification from './pages/PhoneVerification';
 // Lazy Load Admin Pages for Performance
 const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout'));
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
@@ -48,6 +59,7 @@ const AdminChangePassword = React.lazy(() => import('./pages/admin/AdminChangePa
 const PermissionScreen = React.lazy(() => import('./pages/admin/management/PermissionScreen'));
 const ApprovalScreen = React.lazy(() => import('./pages/admin/management/ApprovalScreen'));
 const AdminActivityLogScreen = React.lazy(() => import('./pages/admin/AdminActivityLogScreen'));
+
 const TeamChatScreen = React.lazy(() => import('./pages/admin/TeamChatScreen'));
 import ChatBot from './components/ChatBot';
 import MobileBottomNav from './components/MobileBottomNav';
@@ -115,6 +127,7 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/verify-phone" element={<PhoneVerification />} />
                     <Route path="/contact" element={<Contact />} />
 
                     {/* Public Shop Routes */}
@@ -178,6 +191,31 @@ function App() {
                           <AdminChangePassword />
                         </React.Suspense>
                       } />
+                    </Route>
+
+                    {/* Seller Routes */}
+                    <Route path="/seller/register" element={
+                      <ProtectedRoute>
+                        <SellerRegister />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/seller" element={
+                      <ProtectedRoute>
+                        <SellerLayout />
+                      </ProtectedRoute>
+                    }>
+                      <Route index element={<SellerDashboard />} />
+                      <Route path="dashboard" element={<SellerDashboard />} />
+                    </Route>
+
+                    {/* Finance Routes */}
+                    <Route path="/finance" element={
+                      <ProtectedRoute>
+                        <FinanceLayout />
+                      </ProtectedRoute>
+                    }>
+                      <Route index element={<FinancialDashboard />} />
+                      <Route path="dashboard" element={<FinancialDashboard />} />
                     </Route>
 
                     {/* Catch All - 404 */}

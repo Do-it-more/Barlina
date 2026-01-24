@@ -105,11 +105,12 @@ export const AuthProvider = ({ children }) => {
     };
 
     const googleLogin = async (code) => {
-        const { data } = await api.post('/users/google-auth', { code }); // Put code in body
+        const { data } = await api.post('/users/google-auth', { code });
         if (data.token) {
             localStorage.setItem('token', data.token);
             setUser(data);
         }
+        // Return data so the caller can check for phoneVerificationRequired
         return data;
     };
 
