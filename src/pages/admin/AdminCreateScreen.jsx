@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import { ArrowLeft, Loader, UserPlus, Shield, User, Smartphone, Mail, Lock, Eye, EyeOff, Wand2 } from 'lucide-react';
+import { ArrowLeft, Loader, UserPlus, Shield, User, Smartphone, Mail, Lock, Eye, EyeOff, Wand2, Store, Wallet } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -176,6 +176,30 @@ const AdminCreateScreen = () => {
                             >
                                 <Shield className="h-5 w-5" />
                                 <span className="font-semibold">Admin</span>
+                            </button>
+                            <button
+                                type="button"
+                                disabled={currentUser?.role !== 'super_admin'}
+                                onClick={() => setRole('finance')}
+                                className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all ${role === 'finance'
+                                    ? 'border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                    : 'border-gray-200 dark:border-slate-700 hover:border-emerald-300'
+                                    } ${currentUser?.role !== 'super_admin' ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-slate-800' : ''}`}
+                            >
+                                <Wallet className={`h-5 w-5 ${role === 'finance' ? 'text-emerald-600' : 'text-gray-400'}`} />
+                                <span className="font-semibold">Finance Admin</span>
+                            </button>
+                            <button
+                                type="button"
+                                disabled={currentUser?.role !== 'super_admin'}
+                                onClick={() => setRole('seller_admin')}
+                                className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all ${role === 'seller_admin'
+                                    ? 'border-orange-600 bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                    : 'border-gray-200 dark:border-slate-700 hover:border-orange-300'
+                                    } ${currentUser?.role !== 'super_admin' ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-slate-800' : ''}`}
+                            >
+                                <Store className={`h-5 w-5 ${role === 'seller_admin' ? 'text-orange-600' : 'text-gray-400'}`} />
+                                <span className="font-semibold">Seller Admin</span>
                             </button>
                         </div>
                     </div>

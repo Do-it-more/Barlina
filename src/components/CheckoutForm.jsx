@@ -28,7 +28,8 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('cashfree'); // 'cashfree', 'card', 'upi', 'cod'
+    const [activeTab, setActiveTab] = useState('gateway'); // 'gateway', 'card', 'upi', 'cod'
+    const [activeGateway, setActiveGateway] = useState('cashfree');
     const [upiId, setUpiId] = useState('');
     const [isCodAvailable, setIsCodAvailable] = useState(false);
     const [codUnavailableReason, setCodUnavailableReason] = useState('');
@@ -51,6 +52,9 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
             try {
                 const { data } = await api.get('/settings');
                 setGlobalCodEnabled(data.isCodAvailable);
+                if (data.paymentGateways?.activeGateway) {
+                    setActiveGateway(data.paymentGateways.activeGateway);
+                }
             } catch (error) {
                 console.error("Failed to fetch settings", error);
                 setGlobalCodEnabled(false);
@@ -220,8 +224,8 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
         }
     };
 
-    // Cashfree Payment Handler - Real UPI, Cards, Net Banking, Wallets
-    const handleCashfreePayment = async (e) => {
+    // Unified Gateway Payment Handler
+    const handleGatewayPayment = async (e) => {
         e.preventDefault();
         initializeAudio();
         if (!validateShipping()) return;
@@ -230,11 +234,11 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
         setError(null);
 
         try {
-            // First create the order in our database
-            const createdOrder = await createOrder('Cashfree');
+            // 1. Create Order in DB
+            const createdOrder = await createOrder(activeGateway.charAt(0).toUpperCase() + activeGateway.slice(1));
 
-            // Create Cashfree payment session
-            const { data: cashfreeData } = await api.post('/payments/cashfree/create-order', {
+            // 2. Create Payment Session/Request via Unified Route
+            const { data: paymentData } = await api.post('/payments/create-order', {
                 orderId: `ORDER_${createdOrder._id}`,
                 amount: createdOrder.totalPrice,
                 customerDetails: {
@@ -245,53 +249,48 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
                 }
             });
 
-            // Load Cashfree SDK
-            const cashfree = await loadCashfree();
-            const checkoutInstance = cashfree.checkout({
-                paymentSessionId: cashfreeData.paymentSessionId
-            });
+            // 3. Handle specific gateway logic
+            if (paymentData.gateway === 'cashfree') {
+                const cashfree = await loadCashfree();
+                const checkoutInstance = cashfree.checkout({
+                    paymentSessionId: paymentData.paymentSessionId
+                });
 
-            // Open Cashfree payment popup
-            checkoutInstance.open({
-                onSuccess: async (data) => {
-                    console.log("Payment Success:", data);
-                    // Verify payment on backend
-                    try {
-                        const verifyResponse = await api.post('/payments/cashfree/verify', {
-                            orderId: `ORDER_${createdOrder._id}`
-                        });
+                checkoutInstance.open({
+                    onSuccess: async (data) => {
+                        try {
+                            const verifyResponse = await api.post('/payments/verify', {
+                                gateway: 'cashfree',
+                                orderId: `ORDER_${createdOrder._id}`
+                            });
 
-                        if (verifyResponse.data.verified) {
-                            playSuccessSound();
-                            showToast("Payment successful! Order placed.", "success");
-                            clearCart();
-                            setTimeout(() => {
+                            if (verifyResponse.data.verified) {
+                                playSuccessSound();
+                                showToast("Payment successful! Order placed.", "success");
+                                clearCart();
                                 onDisplaySuccess();
-                            }, 500);
+                            }
+                        } catch (err) {
+                            showToast("Verification pending...", "info");
+                            clearCart();
+                            onDisplaySuccess();
                         }
-                    } catch (verifyErr) {
-                        console.error("Verification failed:", verifyErr);
-                        showToast("Payment verification pending. We'll update your order soon.", "info");
-                        clearCart();
-                        onDisplaySuccess();
-                    }
-                },
-                onFailure: (data) => {
-                    console.error("Payment Failed:", data);
-                    setError(data.message || "Payment failed. Please try again.");
-                    showToast("Payment failed. Please try again.", "error");
-                    // Cancel the order since payment failed
-                    api.put(`/orders/${createdOrder._id}/cancel`, { reason: 'Payment Failed' }).catch(console.error);
-                },
-                onClose: () => {
-                    console.log("Payment popup closed");
-                    setLoading(false);
-                }
-            });
+                    },
+                    onFailure: (data) => {
+                        setError(data.message || "Payment failed");
+                        api.put(`/orders/${createdOrder._id}/cancel`, { reason: 'Payment Failed' }).catch(console.error);
+                    },
+                    onClose: () => setLoading(false)
+                });
+            } else if (paymentData.gateway === 'instamojo') {
+                // Instamojo redirects to payment link
+                window.location.href = paymentData.paymentLink;
+            }
 
         } catch (err) {
-            console.error("Cashfree Payment Error:", err);
-            const msg = err.response?.data?.message || err.message || "Failed to initiate payment";
+            console.error("Payment Error:", err);
+            const backendError = err.response?.data?.error || err.response?.data?.message;
+            const msg = backendError ? `Payment Error: ${backendError}` : (err.message || "Failed to initiate payment");
             setError(msg);
             showToast(msg, "error");
             setLoading(false);
@@ -400,8 +399,8 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
             {/* Tabs */}
             <div className="flex flex-wrap p-1 bg-gray-100 dark:bg-slate-700 rounded-xl gap-1">
                 <button
-                    onClick={() => { setActiveTab('cashfree'); setError(null); }}
-                    className={`flex-1 min-w-[80px] flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'cashfree' ? 'bg-white dark:bg-slate-600 shadow-sm text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                    onClick={() => { setActiveTab('gateway'); setError(null); }}
+                    className={`flex-1 min-w-[80px] flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'gateway' ? 'bg-white dark:bg-slate-600 shadow-sm text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                 >
                     <Wallet className="h-4 w-4" /> Pay Now
                 </button>
@@ -421,15 +420,15 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
                 )}
             </div>
 
-            {/* Cashfree Payment - UPI, Cards, Net Banking, Wallets */}
-            {activeTab === 'cashfree' ? (
-                <form onSubmit={handleCashfreePayment} className="space-y-6 fade-in">
+            {/* Gateway Payment - UPI, Cards, Net Banking, Wallets */}
+            {activeTab === 'gateway' ? (
+                <form onSubmit={handleGatewayPayment} className="space-y-6 fade-in">
                     <div className="p-6 border-2 border-dashed border-green-200 dark:border-green-800 rounded-xl bg-green-50/30 dark:bg-green-900/20">
                         <div className="flex flex-col items-center text-center">
                             <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-4 rounded-2xl shadow-lg mb-4">
                                 <Wallet className="h-10 w-10 text-white" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Pay with Any Method</h3>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Pay with {activeGateway === 'cashfree' ? 'Any Method' : 'Instamojo'}</h3>
                             <p className="text-sm text-slate-600 dark:text-gray-400 mb-4">
                                 UPI • Credit/Debit Cards • Net Banking • Wallets
                             </p>
@@ -444,7 +443,7 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
                     </div>
 
                     <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs rounded-lg border border-blue-100 dark:border-blue-900/30 text-center">
-                        🔒 Your payment is secured by Cashfree Payments (RBI Licensed)
+                        🔒 Your payment is secured by {activeGateway.charAt(0).toUpperCase() + activeGateway.slice(1)} Payments
                     </div>
 
                     {error && (
@@ -458,7 +457,7 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
                         disabled={loading}
                         className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                        {loading ? 'Opening Payment...' : `Pay ₹${finalTotal}`}
+                        {loading ? 'Opening Payment...' : `Pay ₹${total}`}
                     </button>
                 </form>
             ) : activeTab === 'card' ? (

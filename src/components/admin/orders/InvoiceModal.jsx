@@ -2,9 +2,11 @@ import React, { useRef } from 'react';
 import { X, Printer, Download } from 'lucide-react';
 import Barcode from 'react-barcode';
 import { useReactToPrint } from 'react-to-print';
+import { useSettings } from '../../../context/SettingsContext';
 
 const InvoiceModal = ({ isOpen, onClose, order }) => {
     const printRef = useRef();
+    const { settings } = useSettings();
 
     const handlePrint = useReactToPrint({
         content: () => printRef.current,
@@ -12,6 +14,10 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
     });
 
     if (!isOpen || !order) return null;
+
+    const companyName = settings?.companyName || 'Barlina Fashion';
+    const companyAddress = settings?.companyAddress || '123 Fashion Street, T. Nagar, Chennai, Tamil Nadu 600017';
+    const companyPhone = settings?.companyPhone || '+91 98765 43210';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -84,10 +90,22 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
 
                             {/* Right: Company Info */}
                             <div className="w-1/2 text-right">
-                                <h2 className="text-xl font-bold text-indigo-600 mb-1">Barlina Fashion</h2>
-                                <p className="text-sm text-slate-600">123 Fashion Street, T. Nagar</p>
-                                <p className="text-sm text-slate-600">Chennai, Tamil Nadu 600017</p>
-                                <p className="text-sm text-slate-600">Phone: +91 98765 43210</p>
+                                <h2 className="text-xl font-bold text-indigo-600 mb-1">{companyName}</h2>
+                                <div className="text-sm text-slate-600 whitespace-pre-line">
+                                    {typeof companyAddress === 'object' && companyAddress !== null ? (
+                                        <>
+                                            {companyAddress.doorNo && <p>{companyAddress.doorNo}</p>}
+                                            {companyAddress.street && <p>{companyAddress.street}</p>}
+                                            {companyAddress.city && <p>{companyAddress.city}</p>}
+                                            {companyAddress.district && <p>{companyAddress.district}</p>}
+                                            {companyAddress.state && <p>{companyAddress.state}</p>}
+                                            {companyAddress.pincode && <p>{companyAddress.pincode}</p>}
+                                        </>
+                                    ) : (
+                                        <p>{companyAddress}</p>
+                                    )}
+                                </div>
+                                <p className="text-sm text-slate-600">Phone: {companyPhone}</p>
                             </div>
                         </div>
 

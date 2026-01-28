@@ -53,7 +53,7 @@ export const CartProvider = ({ children }) => {
                 quantity,
                 name: product.name,
                 image: product.image,
-                price: product.discountPrice > 0 ? product.discountPrice : product.price,
+                price: (product.discountPrice > 0 && product.discountPrice < product.price) ? product.discountPrice : product.price,
                 countInStock: product.countInStock,
                 color
             });

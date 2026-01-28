@@ -8,15 +8,23 @@ import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../context/ThemeContext';
 import ProfileDropdown from './ProfileDropdown';
 
+import { useSettings } from '../context/SettingsContext';
+
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [keyword, setKeyword] = useState('');
     const { user, logout } = useAuth();
+    const { settings } = useSettings();
     const { getCartCount } = useCart();
     const { wishlist } = useWishlist();
     const { theme, toggleTheme } = useTheme();
     const cartCount = getCartCount();
     const navigate = useNavigate();
+
+    const companyName = settings?.companyName || 'BARLINA fashion design';
+    const splitName = companyName.indexOf(' ');
+    const firstWord = splitName !== -1 ? companyName.substring(0, splitName) : companyName;
+    const restOfName = splitName !== -1 ? companyName.substring(splitName + 1) : 'fashion design';
 
     const handleSearch = (e) => {
         if (e) e.preventDefault();
@@ -42,10 +50,10 @@ const Navbar = () => {
                     {/* Logo - Mobile: Left, Desktop: Center/Left */}
                     <Link to="/" className="group flex flex-col items-start md:items-center justify-center">
                         <span className="font-serif text-2xl md:text-3xl tracking-[0.15em] font-bold text-slate-900 dark:text-white leading-none group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Playfair Display", serif' }}>
-                            BARLINA
+                            {firstWord.toUpperCase()}
                         </span>
                         <span className="text-[10px] md:text-xs tracking-[0.4em] font-light lowercase text-gray-500 dark:text-gray-400 mt-1 block">
-                            fashion design
+                            {restOfName}
                         </span>
                     </Link>
 

@@ -28,7 +28,9 @@ import {
     PanelLeftClose,
     PanelLeftOpen,
     Activity,
-    Wallet
+    Wallet,
+    Store,
+    FileCheck
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -255,6 +257,42 @@ const AdminLayoutContent = () => {
                                 >
                                     <Home className="h-5 w-5" /> Switch to Shop
                                 </Link>
+                                {isSuperAdmin && (
+                                    <>
+                                        <Link
+                                            to="/seller-management"
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                            className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 font-medium text-sm"
+                                        >
+                                            <Store className="h-5 w-5" /> Switch to Seller
+                                        </Link>
+                                        <Link
+                                            to="/finance"
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                            className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium text-sm"
+                                        >
+                                            <Wallet className="h-5 w-5" /> Switch to Finance
+                                        </Link>
+                                    </>
+                                )}
+                                {user?.role === 'finance' && (
+                                    <Link
+                                        to="/finance"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium text-sm"
+                                    >
+                                        <Wallet className="h-5 w-5" /> Back to Finance
+                                    </Link>
+                                )}
+                                {user?.role === 'seller_admin' && (
+                                    <Link
+                                        to="/seller-management"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 font-medium text-sm"
+                                    >
+                                        <Store className="h-5 w-5" /> Back to Seller Admin
+                                    </Link>
+                                )}
                                 <button
                                     onClick={() => { logout(); setIsMobileMenuOpen(false); }}
                                     className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-50 text-red-600 dark:bg-red-900/10 dark:text-red-400 font-medium text-sm"
@@ -371,6 +409,29 @@ const AdminLayoutContent = () => {
                         </Link>
 
                         {isSuperAdmin && (
+                            <>
+                                <Link
+                                    to="/seller-management"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    title={isSidebarCollapsed ? 'Switch to Seller Management' : ''}
+                                    className={`w-full flex items-center ${isSidebarCollapsed ? 'md:justify-center px-0' : 'justify-start px-4'} py-3 rounded-xl text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-slate-800 hover:text-orange-700 dark:hover:text-orange-300 transition-colors mt-2`}
+                                >
+                                    <Store className="h-5 w-5 min-w-[20px]" />
+                                    {(!isSidebarCollapsed || isMobileMenuOpen) && <span className="font-medium ml-3 whitespace-nowrap">Switch to Seller</span>}
+                                </Link>
+                                <Link
+                                    to="/finance"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    title={isSidebarCollapsed ? 'Switch to Finance' : ''}
+                                    className={`w-full flex items-center ${isSidebarCollapsed ? 'md:justify-center px-0' : 'justify-start px-4'} py-3 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors mt-2`}
+                                >
+                                    <Wallet className="h-5 w-5 min-w-[20px]" />
+                                    {(!isSidebarCollapsed || isMobileMenuOpen) && <span className="font-medium ml-3 whitespace-nowrap">Switch to Finance</span>}
+                                </Link>
+                            </>
+                        )}
+
+                        {user?.role === 'finance' && (
                             <Link
                                 to="/finance"
                                 onClick={() => setIsMobileMenuOpen(false)}
@@ -378,7 +439,19 @@ const AdminLayoutContent = () => {
                                 className={`w-full flex items-center ${isSidebarCollapsed ? 'md:justify-center px-0' : 'justify-start px-4'} py-3 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors mt-2`}
                             >
                                 <Wallet className="h-5 w-5 min-w-[20px]" />
-                                {(!isSidebarCollapsed || isMobileMenuOpen) && <span className="font-medium ml-3 whitespace-nowrap">Switch to Finance</span>}
+                                {(!isSidebarCollapsed || isMobileMenuOpen) && <span className="font-medium ml-3 whitespace-nowrap">Back to Finance</span>}
+                            </Link>
+                        )}
+
+                        {user?.role === 'seller_admin' && (
+                            <Link
+                                to="/seller-management"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                title={isSidebarCollapsed ? 'Switch to Seller Management' : ''}
+                                className={`w-full flex items-center ${isSidebarCollapsed ? 'md:justify-center px-0' : 'justify-start px-4'} py-3 rounded-xl text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-slate-800 hover:text-orange-700 dark:hover:text-orange-300 transition-colors mt-2`}
+                            >
+                                <Store className="h-5 w-5 min-w-[20px]" />
+                                {(!isSidebarCollapsed || isMobileMenuOpen) && <span className="font-medium ml-3 whitespace-nowrap">Back to Seller Admin</span>}
                             </Link>
                         )}
 

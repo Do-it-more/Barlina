@@ -119,9 +119,12 @@ const ProductDetail = () => {
     // Use real product images array if available, otherwise fallback to main image
     const images = useMemo(() => {
         if (!product) return [];
-        return (product.images && product.images.length > 0)
-            ? product.images
-            : [product.image];
+        const extraImages = product.images || [];
+        // Ensure main image is first
+        if (product.image && !extraImages.includes(product.image)) {
+            return [product.image, ...extraImages];
+        }
+        return extraImages.length > 0 ? extraImages : (product.image ? [product.image] : []);
     }, [product]);
 
     // Calculate delivery date locally
@@ -155,7 +158,7 @@ const ProductDetail = () => {
                                 alt={product.name}
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
-                            {product.discountPrice > 0 && (
+                            {product.discountPrice > 0 && product.discountPrice < product.price && (
                                 <motion.div
                                     animate={{ scale: [1, 1.1, 1] }}
                                     transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
@@ -198,7 +201,7 @@ const ProductDetail = () => {
                         </div>
 
                         <div className="flex flex-col gap-1 mb-6">
-                            {product.discountPrice > 0 ? (
+                            {product.discountPrice > 0 && product.discountPrice < product.price ? (
                                 <div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-5xl font-black text-slate-900 dark:text-white tracking-tight">

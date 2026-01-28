@@ -11,7 +11,8 @@ import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from '../components/CheckoutForm';
 import confetti from 'canvas-confetti';
 import api from '../services/api';
-import { Tag, X } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
+import { Tag, X, Wallet, Truck } from 'lucide-react';
 
 // Replace with your Stripe Publishable Key
 const stripePromise = loadStripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
@@ -19,13 +20,15 @@ const stripePromise = loadStripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
 const Checkout = () => {
     const { cart, getCartTotal, clearCart } = useCart();
     const { user } = useAuth();
+    const { settings } = useSettings();
     const [isOrderPlaced, setIsOrderPlaced] = useState(false);
     const [form, setForm] = useState({
         address: '',
+        address2: '',
         city: '',
         postalCode: '',
         country: '',
-        phoneNumber: user?.phoneNumber || '',
+        phoneNumber: user?.phoneNumber || user?.address?.phoneNumber || '',
     });
     const [couponCode, setCouponCode] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -49,9 +52,17 @@ const Checkout = () => {
 
     const total = getCartTotal();
     const discount = appliedCoupon ? (total * appliedCoupon.discountPercentage) / 100 : 0;
-    const tax = (total - discount) * 0.1;
-    const shipping = (total - discount) > 50 ? 0 : 10;
-    const finalTotal = total - discount + tax + shipping;
+
+    // Use dynamic tax and shipping from settings
+    const taxRate = settings.gstEnabled ? (settings.gstRate / 100) : 0;
+    const tax = (total - discount) * taxRate;
+    const shipping = (total - discount) >= (settings.freeShippingThreshold || 0) ? 0 : (settings.shippingCharge || 0);
+
+    // TDS Calculation (Deduction)
+    const tdsRate = settings.tdsEnabled ? (settings.tdsRate / 100) : 0;
+    const tds = (total - discount) * tdsRate;
+
+    const finalTotal = total - discount + tax + shipping - tds;
 
     const [errors, setErrors] = useState({});
 
@@ -265,16 +276,15 @@ const Checkout = () => {
                                                 onChange={(e) => {
                                                     if (e.target.checked) {
                                                         const addr = user.address;
-                                                        if (typeof addr === 'object' && addr.street) {
+                                                        if (typeof addr === 'object' && (addr.street || addr.city)) {
                                                             setForm({
                                                                 ...form,
                                                                 address: addr.street || '',
+                                                                address2: addr.addressLine2 || '',
                                                                 city: addr.city || '',
-                                                                country: addr.state || '', // Using state field for country input based on my previous mapping, wait. previous checkout had country/state ambiguity. 
-                                                                // In checkout form originally: 'country' input had placeholder='State'.
-                                                                // I will stick to mapping state -> country input (which is labeled "State / Province")
+                                                                country: addr.state || '',
                                                                 postalCode: addr.postalCode || '',
-                                                                phoneNumber: user.phoneNumber || ''
+                                                                phoneNumber: addr.phoneNumber || user.phoneNumber || ''
                                                             });
                                                         } else if (typeof addr === 'string') {
                                                             setForm({ ...form, address: addr, phoneNumber: user.phoneNumber || '' });
@@ -282,6 +292,7 @@ const Checkout = () => {
                                                     } else {
                                                         setForm({
                                                             address: '',
+                                                            address2: '',
                                                             city: '',
                                                             postalCode: '',
                                                             country: '',
@@ -478,10 +489,18 @@ const Checkout = () => {
                                         <span>-₹{discount.toFixed(2)}</span>
                                     </div>
                                 )}
-                                <div className="flex justify-between text-gray-600 dark:text-gray-400 text-sm">
-                                    <span>Tax (10%)</span>
-                                    <span>₹{tax.toFixed(2)}</span>
-                                </div>
+                                {settings.gstEnabled && (
+                                    <div className="flex justify-between text-gray-600 dark:text-gray-400 text-sm">
+                                        <span>Tax ({settings.gstRate}%)</span>
+                                        <span>₹{tax.toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {settings.tdsEnabled && (
+                                    <div className="flex justify-between text-blue-600 dark:text-blue-400 text-sm">
+                                        <span>TDS ({settings.tdsRate}%)</span>
+                                        <span>-₹{tds.toFixed(2)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-gray-600 dark:text-gray-400 text-sm">
                                     <span>Shipping</span>
                                     <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>

@@ -8,16 +8,27 @@ import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 
+import { useSettings } from '../context/SettingsContext';
+
 const Cart = () => {
     const { cart, updateQuantity, removeFromCart, getCartTotal } = useCart();
     const { user } = useAuth();
+    const { settings } = useSettings();
     const [stockData, setStockData] = useState({});
     const [loadingStock, setLoadingStock] = useState(false);
 
     const total = getCartTotal();
-    const tax = total * 0.1;
-    const shipping = total > 50 ? 0 : 10;
-    const finalTotal = total + tax + shipping;
+
+    // Use dynamic settings for tax and shipping
+    const taxRate = settings.gstEnabled ? (settings.gstRate / 100) : 0;
+    const tax = total * taxRate;
+    const shipping = total >= (settings.freeShippingThreshold || 0) ? 0 : (settings.shippingCharge || 0);
+
+    // TDS Calculation
+    const tdsRate = settings.tdsEnabled ? (settings.tdsRate / 100) : 0;
+    const tds = total * tdsRate;
+
+    const finalTotal = total + tax + shipping - tds;
 
     useEffect(() => {
         const fetchStock = async () => {
@@ -167,15 +178,23 @@ const Cart = () => {
                                         <span>Subtotal</span>
                                         <span className="font-medium">₹{total.toFixed(2)}</span>
                                     </div>
-                                    <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                                        <span>Tax (10%)</span>
-                                        <span className="font-medium">₹{tax.toFixed(2)}</span>
-                                    </div>
+                                    {settings.gstEnabled && (
+                                        <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                                            <span>Tax ({settings.gstRate}%)</span>
+                                            <span className="font-medium">₹{tax.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    {settings.tdsEnabled && (
+                                        <div className="flex justify-between text-blue-600 dark:text-blue-400">
+                                            <span>TDS ({settings.tdsRate}%)</span>
+                                            <span className="font-medium">-₹{tds.toFixed(2)}</span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between text-gray-600 dark:text-gray-400">
                                         <span>Shipping</span>
                                         <span className="font-medium">{shipping === 0 ? <span className="text-green-600 dark:text-green-400">Free</span> : `₹${shipping}`}</span>
                                     </div>
-                                    {shipping > 0 && <p className="text-xs text-green-600 dark:text-green-400">Spend ₹{(50 - total).toFixed(2)} more for free delivery</p>}
+                                    {shipping > 0 && settings.freeShippingThreshold > 0 && <p className="text-xs text-green-600 dark:text-green-400">Spend ₹{(settings.freeShippingThreshold - total).toFixed(2)} more for free delivery</p>}
 
                                     <div className="h-px bg-gray-100 dark:bg-slate-700 my-4"></div>
 

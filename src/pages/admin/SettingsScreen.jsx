@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
-import { Save, Settings as SettingsIcon, Truck, CreditCard, Lock, Shield, Mail, Key, ShieldCheck, MessageSquare, ShoppingBag, Gift } from 'lucide-react';
+import { Save, Settings as SettingsIcon, Truck, CreditCard, Lock, Shield, Mail, Key, ShieldCheck, MessageSquare, ShoppingBag, Gift, Building2, Phone, FileText, MapPin, Edit2, X, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const SettingsScreen = () => {
@@ -9,7 +9,18 @@ const SettingsScreen = () => {
     const { showToast } = useToast();
 
     const [settings, setSettings] = useState({
-        isCodAvailable: true
+        isCodAvailable: true,
+        companyName: '',
+        companyGST: '',
+        companyPAN: '',
+        companyAddress: {},
+        companyPhone: '',
+        companyEmail: '',
+        paymentGateways: {
+            activeGateway: 'cashfree',
+            cashfree: { isActive: true, appId: '', secretKey: '', isProduction: false },
+            instamojo: { isActive: false, apiKey: '', authToken: '', isProduction: false }
+        }
     });
     const [loading, setLoading] = useState(true);
 
@@ -37,6 +48,83 @@ const SettingsScreen = () => {
             checkTwoFactorStatus();
         }
     }, [user]);
+
+    // Company Editing State
+    const [isEditingCompany, setIsEditingCompany] = useState(false);
+    const [isSavingCompany, setIsSavingCompany] = useState(false);
+
+    const handleTextChange = (key, value) => {
+        setSettings(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleAddressChange = (key, value) => {
+        setSettings(prev => ({
+            ...prev,
+            companyAddress: {
+                ...(typeof prev.companyAddress === 'object' ? prev.companyAddress : {}),
+                [key]: value
+            }
+        }));
+    };
+
+    const handlePaymentConfigChange = (gateway, key, value) => {
+        setSettings(prev => ({
+            ...prev,
+            paymentGateways: {
+                ...prev.paymentGateways,
+                [gateway]: {
+                    ...prev.paymentGateways?.[gateway],
+                    [key]: value
+                }
+            }
+        }));
+    };
+
+    const handleActiveGatewayChange = (value) => {
+        setSettings(prev => ({
+            ...prev,
+            paymentGateways: {
+                ...prev.paymentGateways,
+                activeGateway: value
+            }
+        }));
+    };
+
+    const savePaymentSettings = async () => {
+        try {
+            await api.put('/settings', {
+                paymentGateways: settings.paymentGateways
+            });
+            showToast('Payment gateway settings updated', 'success');
+        } catch (error) {
+            showToast('Failed to update payment settings', 'error');
+        }
+    };
+
+    const saveCompanyInfo = async () => {
+        setIsSavingCompany(true);
+        try {
+            await api.put('/settings', {
+                companyName: settings.companyName,
+                companyPhone: settings.companyPhone,
+                companyEmail: settings.companyEmail,
+                companyGST: settings.companyGST,
+                companyPAN: settings.companyPAN,
+                companyAddress: settings.companyAddress
+            });
+            showToast('Company details updated successfully', 'success');
+            setIsEditingCompany(false);
+        } catch (error) {
+            showToast('Failed to save company details', 'error');
+        } finally {
+            setIsSavingCompany(false);
+        }
+    };
+
+    const cancelEditing = () => {
+        setIsEditingCompany(false);
+        fetchSettings(); // Revert changes
+    };
 
     const handlePasswordChange = async (e) => {
         e.preventDefault();
@@ -72,6 +160,17 @@ const SettingsScreen = () => {
     const fetchSettings = async () => {
         try {
             const { data } = await api.get('/settings');
+            // Handle legacy address string
+            if (typeof data.companyAddress === 'string') {
+                data.companyAddress = {
+                    street: data.companyAddress,
+                    doorNo: '',
+                    city: '',
+                    district: '',
+                    state: '',
+                    pincode: ''
+                };
+            }
             setSettings(data);
         } catch (error) {
             showToast('Failed to fetch settings', 'error');
@@ -114,6 +213,183 @@ const SettingsScreen = () => {
             </div>
 
 
+            {/* Company Settings */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Company Information</h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Manage business details for invoices</p>
+                        </div>
+                    </div>
+                    <div>
+                        {!isEditingCompany ? (
+                            <button
+                                onClick={() => setIsEditingCompany(true)}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                            >
+                                <Edit2 className="h-4 w-4" />
+                                Edit Details
+                            </button>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={cancelEditing}
+                                    className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                    title="Cancel"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                                <button
+                                    onClick={saveCompanyInfo}
+                                    disabled={isSavingCompany}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    {isSavingCompany ? (
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <Check className="h-4 w-4" />
+                                    )}
+                                    Save Changes
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity duration-200 ${!isEditingCompany ? 'opacity-80' : 'opacity-100'}`}>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
+                        <div className="relative">
+                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <input
+                                type="text"
+                                disabled={!isEditingCompany}
+                                value={settings.companyName || ''}
+                                onChange={(e) => handleTextChange('companyName', e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                        <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <input
+                                type="text"
+                                disabled={!isEditingCompany}
+                                value={settings.companyPhone || ''}
+                                onChange={(e) => handleTextChange('companyPhone', e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Support Email</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <input
+                                type="email"
+                                disabled={!isEditingCompany}
+                                value={settings.companyEmail || ''}
+                                onChange={(e) => handleTextChange('companyEmail', e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST Number</label>
+                        <div className="relative">
+                            <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <input
+                                type="text"
+                                disabled={!isEditingCompany}
+                                value={settings.companyGST || ''}
+                                onChange={(e) => handleTextChange('companyGST', e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PAN Number</label>
+                        <div className="relative">
+                            <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <input
+                                type="text"
+                                disabled={!isEditingCompany}
+                                value={settings.companyPAN || ''}
+                                onChange={(e) => handleTextChange('companyPAN', e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                            />
+                        </div>
+                    </div>
+                    {/* Address Fields */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Door No</label>
+                        <input
+                            type="text"
+                            disabled={!isEditingCompany}
+                            value={settings.companyAddress?.doorNo || ''}
+                            onChange={(e) => handleAddressChange('doorNo', e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Street / Landmark</label>
+                        <input
+                            type="text"
+                            disabled={!isEditingCompany}
+                            value={settings.companyAddress?.street || ''}
+                            onChange={(e) => handleAddressChange('street', e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">City / Area</label>
+                        <input
+                            type="text"
+                            disabled={!isEditingCompany}
+                            value={settings.companyAddress?.city || ''}
+                            onChange={(e) => handleAddressChange('city', e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">District</label>
+                        <input
+                            type="text"
+                            disabled={!isEditingCompany}
+                            value={settings.companyAddress?.district || ''}
+                            onChange={(e) => handleAddressChange('district', e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State</label>
+                        <input
+                            type="text"
+                            disabled={!isEditingCompany}
+                            value={settings.companyAddress?.state || ''}
+                            onChange={(e) => handleAddressChange('state', e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pincode</label>
+                        <input
+                            type="text"
+                            disabled={!isEditingCompany}
+                            value={settings.companyAddress?.pincode || ''}
+                            onChange={(e) => handleAddressChange('pincode', e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                        />
+                    </div>
+                </div>
+            </div>
+
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center gap-3">
                     <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
@@ -148,6 +424,131 @@ const SettingsScreen = () => {
                             />
                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                         </label>
+                    </div>
+
+                    {/* Payment Gateway Configuration Section */}
+                    <div className="py-6 border-t border-gray-100 dark:border-slate-700">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Online Payment Gateways</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Configure credentials for payment providers</p>
+                            </div>
+                            <button
+                                onClick={savePaymentSettings}
+                                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+                            >
+                                <Save className="h-4 w-4 inline mr-2" />
+                                Save Credentials
+                            </button>
+                        </div>
+
+                        {/* Active Gateway Selection */}
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Primary Payment Gateway</label>
+                            <div className="flex gap-4">
+                                <label className={`flex-1 border rounded-lg p-3 cursor-pointer transition-all ${settings.paymentGateways?.activeGateway === 'cashfree' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-slate-700'}`}>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            name="activeGateway"
+                                            value="cashfree"
+                                            checked={settings.paymentGateways?.activeGateway === 'cashfree'}
+                                            onChange={(e) => handleActiveGatewayChange(e.target.value)}
+                                            className="text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="font-semibold text-slate-900 dark:text-white">Cashfree Payments</span>
+                                    </div>
+                                </label>
+                                <label className={`flex-1 border rounded-lg p-3 cursor-pointer transition-all ${settings.paymentGateways?.activeGateway === 'instamojo' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-slate-700'}`}>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            name="activeGateway"
+                                            value="instamojo"
+                                            checked={settings.paymentGateways?.activeGateway === 'instamojo'}
+                                            onChange={(e) => handleActiveGatewayChange(e.target.value)}
+                                            className="text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="font-semibold text-slate-900 dark:text-white">Instamojo</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Credentials Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Cashfree Config */}
+                            <div className={`p-4 rounded-lg border ${settings.paymentGateways?.activeGateway === 'cashfree' ? 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800' : 'border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 opacity-70'}`}>
+                                <h4 className="font-medium text-slate-900 dark:text-white mb-3">Cashfree Credentials</h4>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">App ID</label>
+                                        <input
+                                            type="text"
+                                            value={settings.paymentGateways?.cashfree?.appId || ''}
+                                            onChange={(e) => handlePaymentConfigChange('cashfree', 'appId', e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-transparent text-slate-900 dark:text-white"
+                                            placeholder="Enter App ID"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Secret Key</label>
+                                        <input
+                                            type="password"
+                                            value={settings.paymentGateways?.cashfree?.secretKey || ''}
+                                            onChange={(e) => handlePaymentConfigChange('cashfree', 'secretKey', e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-transparent text-slate-900 dark:text-white"
+                                            placeholder="Enter Secret Key"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={settings.paymentGateways?.cashfree?.isProduction || false}
+                                            onChange={(e) => handlePaymentConfigChange('cashfree', 'isProduction', e.target.checked)}
+                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="text-sm text-gray-600 dark:text-gray-300">Production Mode</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Instamojo Config */}
+                            <div className={`p-4 rounded-lg border ${settings.paymentGateways?.activeGateway === 'instamojo' ? 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800' : 'border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 opacity-70'}`}>
+                                <h4 className="font-medium text-slate-900 dark:text-white mb-3">Instamojo Credentials</h4>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">API Key</label>
+                                        <input
+                                            type="text"
+                                            value={settings.paymentGateways?.instamojo?.apiKey || ''}
+                                            onChange={(e) => handlePaymentConfigChange('instamojo', 'apiKey', e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-transparent text-slate-900 dark:text-white"
+                                            placeholder="Enter API Key"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Auth Token</label>
+                                        <input
+                                            type="password"
+                                            value={settings.paymentGateways?.instamojo?.authToken || ''}
+                                            onChange={(e) => handlePaymentConfigChange('instamojo', 'authToken', e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-transparent text-slate-900 dark:text-white"
+                                            placeholder="Enter Auth Token"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={settings.paymentGateways?.instamojo?.isProduction || false}
+                                            onChange={(e) => handlePaymentConfigChange('instamojo', 'isProduction', e.target.checked)}
+                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="text-sm text-gray-600 dark:text-gray-300">Production Mode</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

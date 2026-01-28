@@ -14,12 +14,20 @@ const MobileBottomNav = () => {
         return location.pathname === path;
     };
 
+    const isStaff = ['admin', 'super_admin', 'finance', 'seller_admin'].includes(user?.role);
+
+    const getDashboardPath = () => {
+        if (user?.role === 'finance') return '/finance/dashboard';
+        if (user?.role === 'seller_admin') return '/seller-management/dashboard';
+        return '/admin/dashboard';
+    };
+
     const navItems = [
         { icon: Home, label: 'Home', path: '/' },
         { icon: Grid, label: 'Categories', path: '/products' },
         { icon: User, label: 'Account', path: '/profile' },
-        (user?.role === 'admin' || user?.role === 'super_admin')
-            ? { icon: LayoutDashboard, label: 'Admin', path: '/admin/dashboard' }
+        isStaff
+            ? { icon: LayoutDashboard, label: 'Dashboard', path: getDashboardPath() }
             : { icon: Package, label: 'My Orders', path: '/orders' }
     ];
 

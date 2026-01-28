@@ -17,6 +17,21 @@ const ProfileDropdown = () => {
     const fileInputRef = useRef(null);
     const dropdownRef = useRef(null);
 
+    const isStaff = ['admin', 'super_admin', 'finance', 'seller_admin'].includes(user?.role);
+
+    const getDashboardLink = () => {
+        if (user?.role === 'finance') return '/finance/dashboard';
+        if (user?.role === 'seller_admin') return '/seller-management/dashboard';
+        return '/admin/dashboard';
+    };
+
+    const getDashboardLabel = () => {
+        if (user?.role === 'finance') return 'Finance Dashboard';
+        if (user?.role === 'seller_admin') return 'Seller Admin';
+        if (user?.role === 'super_admin') return 'Super Admin Dashboard';
+        return 'Admin Dashboard';
+    };
+
     // Reset error when user photo changes
     useEffect(() => {
         setImageError(false);
@@ -188,7 +203,7 @@ const ProfileDropdown = () => {
                                     </div>
                                 ) : (
                                     <Link
-                                        to={(user.role === 'admin' || user.role === 'super_admin') ? "/admin/dashboard" : "/profile"}
+                                        to={isStaff ? getDashboardLink() : "/profile"}
                                         className="mt-3 block group cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 p-2 rounded-lg transition-colors"
                                         onClick={() => setIsOpen(false)}
                                     >
@@ -197,14 +212,14 @@ const ProfileDropdown = () => {
                                         </h3>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
                                         <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2 font-medium">
-                                            {(user.role === 'admin' || user.role === 'super_admin') ? 'Go to Dashboard' : 'View Profile & Complaints'}
+                                            {isStaff ? 'Go to Dashboard' : 'View Profile & Complaints'}
                                         </p>
                                     </Link>
                                 )}
                             </div>
 
                             <div className="p-2">
-                                {user.role !== 'admin' && user.role !== 'super_admin' && (
+                                {!isStaff && (
                                     <Link
                                         to="/orders"
                                         onClick={() => setIsOpen(false)}
@@ -215,14 +230,14 @@ const ProfileDropdown = () => {
                                     </Link>
                                 )}
 
-                                {(user.role === 'admin' || user.role === 'super_admin') && (
+                                {isStaff && (
                                     <Link
-                                        to="/admin/dashboard"
+                                        to={getDashboardLink()}
                                         onClick={() => setIsOpen(false)}
                                         className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors border border-indigo-100/50 dark:border-indigo-900/50 mb-1"
                                     >
                                         <LayoutDashboard className="h-4 w-4" />
-                                        {user.role === 'super_admin' ? 'Super Admin Dashboard' : 'Admin Dashboard'}
+                                        {getDashboardLabel()}
                                     </Link>
                                 )}
                                 <button

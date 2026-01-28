@@ -219,29 +219,34 @@ export const AdminChatProvider = ({ children }) => {
 
     // 7. Delete Chat
     const deleteChat = useCallback(async (chatId) => {
+        // OPTIMISTIC UPDATE: Remove from UI immediately
+        setChats(prevChats => prevChats.filter(c => c._id?.toString() !== chatId?.toString()));
+
+        // Clear unread count immediately
+        setUnreadCounts(prev => {
+            const newCounts = { ...prev };
+            delete newCounts[chatId];
+            return newCounts;
+        });
+
+        // Clear active chat immediately if it's the one being deleted
+        setActiveChat(prev => {
+            if (prev?._id?.toString() === chatId?.toString()) {
+                return null;
+            }
+            return prev;
+        });
+
         try {
             await api.delete(`/admin/chat/${chatId}`);
-            // Remove from local state
-            setChats(prevChats => prevChats.filter(c => c._id?.toString() !== chatId?.toString()));
-            // Clear unread count
-            setUnreadCounts(prev => {
-                const newCounts = { ...prev };
-                delete newCounts[chatId];
-                return newCounts;
-            });
-            // Clear active chat if it was deleted
-            setActiveChat(prev => {
-                if (prev?._id?.toString() === chatId?.toString()) {
-                    return null;
-                }
-                return prev;
-            });
             return { success: true };
         } catch (error) {
             console.error("Failed to delete chat", error);
+            // Revert state by re-fetching (simpler than manual rollback)
+            fetchChats();
             return { success: false, error: error.response?.data?.message || 'Failed to delete' };
         }
-    }, []);
+    }, [fetchChats]);
 
     // 8. Open Chat with a specific user (create if doesn't exist)
     const openChat = useCallback(async (targetUser) => {

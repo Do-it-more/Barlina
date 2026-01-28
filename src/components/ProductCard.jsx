@@ -105,7 +105,7 @@ const ProductCard = React.memo(({ product }) => {
                     className="absolute top-3 right-3 p-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm hover:bg-white dark:hover:bg-slate-900 z-10 text-gray-600 dark:text-gray-300"
                 />
 
-                {product.discountPrice > 0 && (
+                {product.discountPrice > 0 && product.discountPrice < product.price && (
                     <motion.div
                         animate={{ scale: [1, 1.1, 1] }}
                         transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
@@ -172,7 +172,7 @@ const ProductCard = React.memo(({ product }) => {
 
                 <div className="flex items-center justify-between mt-auto">
                     <div className="flex flex-col mt-auto">
-                        {product.discountPrice > 0 ? (
+                        {product.discountPrice > 0 && product.discountPrice < product.price ? (
                             <div className="flex items-center gap-2">
                                 <span className="text-xl font-bold text-slate-900 dark:text-white">
                                     ₹{product.discountPrice.toLocaleString()}

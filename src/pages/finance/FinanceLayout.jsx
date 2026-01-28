@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -9,39 +9,69 @@ import {
     LogOut,
     Menu,
     X,
-    Bell
+    Bell,
+    MessageSquare,
+    ShoppingBag,
+    Package,
+    RotateCcw,
+    AlertCircle,
+    Tag,
+    List,
+    Users,
+    Sun,
+    Moon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useNavigate } from 'react-router-dom';
+import { AdminChatProvider } from '../../context/AdminChatContext';
 
-const FinanceLayout = () => {
+const FinanceLayoutContent = () => {
     const { logout, user } = useAuth();
-    const { theme } = useTheme();
+    const { theme, toggleTheme } = useTheme();
+    const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    useEffect(() => {
+        if (user?.isFirstLogin && location.pathname !== '/finance/change-password') {
+            navigate('/finance/change-password');
+        }
+    }, [user, navigate, location.pathname]);
+
     const navItems = [
         { path: '/finance/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { path: '/finance/reports', icon: FileText, label: 'Ledger & Reports' }, // Could reuse existing finance screens
+        { path: '/finance/reports', icon: FileText, label: 'Ledger & Reports' },
         { path: '/finance/stats', icon: PieChart, label: 'Analytics' },
-        { path: '/finance/settings', icon: Settings, label: 'Settings' },
     ];
+
+    // Append Permission-Based Links
+    if (user?.permissions?.orders) navItems.push({ path: '/admin/orders', icon: ShoppingBag, label: 'Orders' });
+    if (user?.permissions?.products) navItems.push({ path: '/admin/products', icon: Package, label: 'Products' });
+    if (user?.permissions?.categories) navItems.push({ path: '/admin/categories', icon: List, label: 'Categories' });
+    if (user?.permissions?.returns) navItems.push({ path: '/admin/returns', icon: RotateCcw, label: 'Returns' });
+    if (user?.permissions?.complaints) navItems.push({ path: '/admin/complaints', icon: AlertCircle, label: 'Complaints' });
+    if (user?.permissions?.coupons) navItems.push({ path: '/admin/coupons', icon: Tag, label: 'Coupons' });
+    if (user?.permissions?.users) navItems.push({ path: '/admin/users', icon: Users, label: 'Users' });
+
+    navItems.push({ path: '/finance/settings', icon: Settings, label: 'Settings' });
+    navItems.push({ path: '/finance/team-chat', icon: MessageSquare, label: 'Team Chat' });
 
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-slate-900 overflow-hidden">
             {/* Sidebar */}
             <aside className={`
-                fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transition-transform duration-300 ease-in-out
+                fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 transition-transform duration-300 ease-in-out
                 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
             `}>
-                <div className="flex items-center justify-between p-4 h-16 border-b border-slate-800">
+                <div className="flex items-center justify-between p-4 h-16 border-b border-gray-200 dark:border-slate-800">
                     <Link to="/finance/dashboard" className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">F</div>
-                        <span className="text-xl font-bold text-emerald-100">
+                        <span className="text-xl font-bold text-slate-800 dark:text-emerald-100">
                             Finance Portal
                         </span>
                     </Link>
-                    <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-400 hover:text-white">
+                    <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-400 hover:text-slate-900 dark:hover:text-white">
                         <X className="h-6 w-6" />
                     </button>
                 </div>
@@ -53,8 +83,8 @@ const FinanceLayout = () => {
                             to={item.path}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                                 ${location.pathname === item.path
-                                    ? 'bg-emerald-600/20 text-emerald-400'
-                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-600/20 dark:text-emerald-400'
+                                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                                 }
                             `}
                             onClick={() => setIsMobileMenuOpen(false)}
@@ -64,10 +94,10 @@ const FinanceLayout = () => {
                         </Link>
                     ))}
 
-                    <div className="pt-8 mt-8 border-t border-slate-800">
+                    <div className="pt-8 mt-8 border-t border-gray-200 dark:border-slate-800">
                         <div className="px-4 mb-4">
-                            <p className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Department</p>
-                            <p className="text-sm font-medium text-slate-300 mt-1">Finance & Accounts</p>
+                            <p className="text-xs text-gray-500 dark:text-slate-500 uppercase font-semibold tracking-wider">Department</p>
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mt-1">Finance & Accounts</p>
                         </div>
 
                         {user?.role === 'super_admin' && (
@@ -110,6 +140,9 @@ const FinanceLayout = () => {
                     </button>
 
                     <div className="ml-auto flex items-center gap-4">
+                        <button onClick={toggleTheme} className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                        </button>
                         <button className="relative p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
                             <Bell className="h-5 w-5" />
                         </button>
@@ -139,6 +172,14 @@ const FinanceLayout = () => {
                 />
             )}
         </div>
+    );
+};
+
+const FinanceLayout = () => {
+    return (
+        <AdminChatProvider>
+            <FinanceLayoutContent />
+        </AdminChatProvider>
     );
 };
 

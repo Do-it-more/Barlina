@@ -42,7 +42,7 @@ const ChatSidebar = () => {
                 try {
                     const { data } = await api.get('/users');
                     const admins = data.filter(u =>
-                        (u.role === 'admin' || u.role === 'super_admin') &&
+                        ['admin', 'super_admin', 'finance', 'seller_admin'].includes(u.role) &&
                         u._id !== currentUser._id
                     );
                     setAvailableUsers(admins);
@@ -238,10 +238,23 @@ const ChatSidebar = () => {
                                         <h3 className="font-semibold text-slate-800 dark:text-gray-200 truncate text-[15px] md:text-sm">
                                             {chat.chatName}
                                         </h3>
-                                        {chat.type === 'group' && (
+                                        {chat.type === 'group' ? (
                                             <span className="text-[10px] px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full">
                                                 Team
                                             </span>
+                                        ) : (
+                                            (() => {
+                                                const otherMember = chat.members?.find(m => m.user?._id !== currentUser?._id);
+                                                const role = otherMember?.user?.role;
+
+                                                if (!role) return null;
+
+                                                if (role === 'finance') return <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border border-emerald-200 dark:border-emerald-800">Finance</span>;
+                                                if (role === 'seller_admin') return <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 font-medium border border-orange-200 dark:border-orange-800">Seller</span>;
+                                                if (role === 'super_admin') return <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium border border-purple-200 dark:border-purple-800">Super Admin</span>;
+                                                if (role === 'admin') return <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium border border-indigo-200 dark:border-indigo-800">Admin</span>;
+                                                return null;
+                                            })()
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -381,7 +394,12 @@ const ChatSidebar = () => {
                                         </div>
                                         <div>
                                             <p className="font-medium text-slate-800 dark:text-white">{u.name}</p>
-                                            <p className="text-xs text-gray-500 capitalize">{u.role.replace('_', ' ')}</p>
+                                            <div className="flex items-center mt-1">
+                                                {u.role === 'admin' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium border border-indigo-200 dark:border-indigo-800">Admin</span>}
+                                                {u.role === 'super_admin' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium border border-purple-200 dark:border-purple-800">Super Admin</span>}
+                                                {u.role === 'finance' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border border-emerald-200 dark:border-emerald-800">Finance</span>}
+                                                {u.role === 'seller_admin' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 font-medium border border-orange-200 dark:border-orange-800">Seller Admin</span>}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -474,7 +492,12 @@ const ChatSidebar = () => {
                                             </div>
                                             <div className="flex-1">
                                                 <p className="font-medium text-slate-800 dark:text-white">{u.name}</p>
-                                                <p className="text-xs text-gray-500 capitalize">{u.role.replace('_', ' ')}</p>
+                                                <div className="flex items-center mt-1">
+                                                    {u.role === 'admin' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium border border-indigo-200 dark:border-indigo-800">Admin</span>}
+                                                    {u.role === 'super_admin' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium border border-purple-200 dark:border-purple-800">Super Admin</span>}
+                                                    {u.role === 'finance' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border border-emerald-200 dark:border-emerald-800">Finance</span>}
+                                                    {u.role === 'seller_admin' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 font-medium border border-orange-200 dark:border-orange-800">Seller Admin</span>}
+                                                </div>
                                             </div>
                                             {/* Checkbox */}
                                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected

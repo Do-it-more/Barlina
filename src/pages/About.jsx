@@ -55,7 +55,7 @@ const About = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                             {[
                                 { icon: Award, title: "Premium Quality", desc: "Top-tier products from trusted brands." },
-                                { icon: Users, title: "Customer First", desc: "24/7 support dedicated to your needs." },
+                                { icon: Users, title: "Customer First", desc: "9 AM - 5 PM support dedicated to your needs." },
                                 { icon: Globe, title: "Global Shipping", desc: "Fast & detailed tracking worldwide." },
                                 { icon: Heart, title: "Curated with Love", desc: "Only the best selection for you." }
                             ].map((item, index) => (

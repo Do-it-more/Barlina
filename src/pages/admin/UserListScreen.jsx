@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
-import { Trash2, Shield, User, ShieldCheck, Plus, Copy, Check, Facebook, Mail, Search, MessageSquare } from 'lucide-react';
+import { Trash2, Shield, User, ShieldCheck, Plus, Copy, Check, Facebook, Mail, Search, MessageSquare, Wallet, Store, Edit2, X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAuth } from '../../context/AuthContext';
@@ -68,8 +68,10 @@ const UserListScreen = () => {
             settings: false,
             finance: false
         },
-        assignedCategories: [] // New State
+        assignedCategories: [], // New State
+        role: 'user' // Added role
     });
+    const [isRoleEditing, setIsRoleEditing] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -127,7 +129,7 @@ const UserListScreen = () => {
 
         setSelectedUser(user);
         setAccessForm({
-            isAdmin: user.role === 'admin',
+            role: user.role, // Set current role
             permissions: {
                 orders: user.permissions?.orders || false,
                 returns: user.permissions?.returns || false,
@@ -142,12 +144,13 @@ const UserListScreen = () => {
             },
             assignedCategories: user.assignedCategories || [] // Populate
         });
+        setIsRoleEditing(false); // Reset edit mode
         setIsAccessModalOpen(true);
     };
 
     const handleAccessSave = async () => {
         try {
-            const newRole = accessForm.isAdmin ? 'admin' : 'user';
+            const newRole = accessForm.role;
 
             // Unified Update Call (Role + Permissions + Categories)
             await api.put(`/admin/management/users/${selectedUser._id}/access`, {
@@ -248,7 +251,8 @@ const UserListScreen = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {currentUser?.role === 'super_admin' && (
                     <div
                         onClick={() => setFilter(filter === 'admin' ? 'all' : 'admin')}
@@ -259,30 +263,66 @@ const UserListScreen = () => {
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Admins</p>
-                                <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{adminCount}</p>
+                                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Admins</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{adminCount}</p>
                             </div>
-                            <div className={`p-3 rounded-full transition-colors ${filter === 'admin' ? 'bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300' : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'}`}>
-                                <ShieldCheck className="h-8 w-8" />
+                            <div className={`p-2.5 rounded-full transition-colors ${filter === 'admin' ? 'bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300' : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'}`}>
+                                <ShieldCheck className="h-6 w-6" />
                             </div>
                         </div>
                     </div>
                 )}
+
                 <div
-                    onClick={() => setFilter(filter === 'user' ? 'all' : 'user')}
-                    className={`bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border cursor-pointer transition-all ${currentUser?.role !== 'super_admin' ? 'col-span-1 md:col-span-2' : ''
-                        } ${filter === 'user'
-                            ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/50 dark:bg-blue-900/10'
-                            : 'border-gray-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800'
+                    onClick={() => setFilter(filter === 'finance' ? 'all' : 'finance')}
+                    className={`bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border cursor-pointer transition-all ${filter === 'finance'
+                        ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-900/10'
+                        : 'border-gray-100 dark:border-slate-700 hover:border-emerald-200 dark:hover:border-emerald-800'
                         }`}
                 >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Customers</p>
-                            <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{userCount}</p>
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Finance</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{users.filter(u => u.role === 'finance').length}</p>
                         </div>
-                        <div className={`p-3 rounded-full transition-colors ${filter === 'user' ? 'bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
-                            <User className="h-8 w-8" />
+                        <div className={`p-2.5 rounded-full transition-colors ${filter === 'finance' ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'}`}>
+                            <Wallet className="h-6 w-6" />
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    onClick={() => setFilter(filter === 'seller_admin' ? 'all' : 'seller_admin')}
+                    className={`bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border cursor-pointer transition-all ${filter === 'seller_admin'
+                        ? 'border-orange-500 ring-2 ring-orange-500/20 bg-orange-50/50 dark:bg-orange-900/10'
+                        : 'border-gray-100 dark:border-slate-700 hover:border-orange-200 dark:hover:border-orange-800'
+                        }`}
+                >
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Seller Admin</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{users.filter(u => u.role === 'seller_admin').length}</p>
+                        </div>
+                        <div className={`p-2.5 rounded-full transition-colors ${filter === 'seller_admin' ? 'bg-orange-200 dark:bg-orange-800 text-orange-700 dark:text-orange-300' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'}`}>
+                            <Store className="h-6 w-6" />
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    onClick={() => setFilter(filter === 'user' ? 'all' : 'user')}
+                    className={`bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border cursor-pointer transition-all ${filter === 'user'
+                        ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/50 dark:bg-blue-900/10'
+                        : 'border-gray-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800'
+                        }`}
+                >
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customers</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{userCount}</p>
+                        </div>
+                        <div className={`p-2.5 rounded-full transition-colors ${filter === 'user' ? 'bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
+                            <User className="h-6 w-6" />
                         </div>
                     </div>
                 </div>
@@ -348,6 +388,16 @@ const UserListScreen = () => {
                                                     <ShieldCheck className="h-3 w-3" />
                                                     <span>Admin Access</span>
                                                 </>
+                                            ) : user.role === 'finance' ? (
+                                                <>
+                                                    <Wallet className="h-3 w-3" />
+                                                    <span>Finance Admin</span>
+                                                </>
+                                            ) : user.role === 'seller_admin' ? (
+                                                <>
+                                                    <Store className="h-3 w-3" />
+                                                    <span>Seller Admin</span>
+                                                </>
                                             ) : (
                                                 <>
                                                     <User className="h-3 w-3" />
@@ -356,7 +406,7 @@ const UserListScreen = () => {
                                             )}
                                         </button>
                                         {/* Permission Badges Preview */}
-                                        {user.role === 'admin' && (
+                                        {(user.role === 'admin' || user.role === 'finance' || user.role === 'seller_admin') && (
                                             <div className="flex gap-1 mt-1.5 flex-wrap max-w-[200px]">
                                                 {user.permissions?.orders && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Orders</span>}
                                                 {user.permissions?.returns && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">Returns</span>}
@@ -422,11 +472,26 @@ const UserListScreen = () => {
                                 disabled={currentUser?.role !== 'super_admin'}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${user.role === 'admin'
                                     ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                    : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300'
+                                    : user.role === 'finance'
+                                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                        : user.role === 'seller_admin'
+                                            ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                            : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300'
                                     } ${currentUser?.role !== 'super_admin' ? 'opacity-80' : ''}`}
                             >
-                                <ShieldCheck className="h-4 w-4" />
-                                {user.role === 'admin' ? 'Manage Access' : 'Assign Role'}
+                                {user.role === 'admin' ? (
+                                    <ShieldCheck className="h-4 w-4" />
+                                ) : user.role === 'finance' ? (
+                                    <Wallet className="h-4 w-4" />
+                                ) : user.role === 'seller_admin' ? (
+                                    <Store className="h-4 w-4" />
+                                ) : (
+                                    <ShieldCheck className="h-4 w-4" />
+                                )}
+                                {user.role === 'admin' ? 'Manage Access' :
+                                    user.role === 'finance' ? 'Finance Admin' :
+                                        user.role === 'seller_admin' ? 'Seller Admin' :
+                                            'Assign Role'}
                             </button>
 
                             <button
@@ -451,24 +516,57 @@ const UserListScreen = () => {
 
                         <div className="p-6 space-y-6 overflow-y-auto">
                             {/* Role Toggle */}
-                            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700/30 rounded-xl">
-                                <div>
-                                    <p className="font-semibold text-slate-800 dark:text-white">Admin Privileges</p>
-                                    <p className="text-xs text-gray-500">Enable to assign specific management tasks</p>
+                            {/* Role Selection */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Select Role</p>
+                                    {!isRoleEditing ? (
+                                        <button
+                                            onClick={() => setIsRoleEditing(true)}
+                                            className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-2 py-1 rounded transition-colors"
+                                        >
+                                            <Edit2 className="h-3 w-3" /> Edit
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                setIsRoleEditing(false);
+                                                // Reset role to original if desired, but user might want to keep selection open to save
+                                                // For now just toggle lock. Ideally we could revert to original role here if needed,
+                                                // but standard UX often just re-locks or cancels.
+                                                // Let's re-lock.
+                                            }}
+                                            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 font-medium hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                                        >
+                                            <X className="h-3 w-3" /> Cancel
+                                        </button>
+                                    )}
                                 </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="sr-only peer"
-                                        checked={accessForm.isAdmin}
-                                        onChange={(e) => setAccessForm({ ...accessForm, isAdmin: e.target.checked })}
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                                </label>
+                                <div className={`grid grid-cols-2 gap-3 transition-opacity duration-200 ${!isRoleEditing ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
+                                    {[
+                                        { id: 'user', label: 'User (Customer)', icon: User },
+                                        { id: 'admin', label: 'Admin', icon: ShieldCheck },
+                                        { id: 'finance', label: 'Finance Admin', icon: Wallet },
+                                        { id: 'seller_admin', label: 'Seller Admin', icon: Store },
+                                    ].map((roleOption) => (
+                                        <button
+                                            key={roleOption.id}
+                                            disabled={!isRoleEditing}
+                                            onClick={() => setAccessForm({ ...accessForm, role: roleOption.id })}
+                                            className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${accessForm.role === roleOption.id
+                                                ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                                                : 'border-gray-100 dark:border-slate-700 hover:border-indigo-300'
+                                                }`}
+                                        >
+                                            <roleOption.icon className="h-4 w-4" />
+                                            <span className="font-semibold text-xs">{roleOption.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* 2FA Toggle (Super Admin Control) */}
-                            {accessForm.isAdmin && (
+                            {(accessForm.role === 'admin' || accessForm.role === 'finance' || accessForm.role === 'seller_admin') && (
                                 <div className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 rounded-xl">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-white dark:bg-indigo-900 rounded-lg text-indigo-600 dark:text-indigo-400">
@@ -512,7 +610,7 @@ const UserListScreen = () => {
                             )}
 
                             {/* Permissions Grid */}
-                            <div className={`space-y-3 transition-all duration-300 ${accessForm.isAdmin ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'}`}>
+                            <div className={`space-y-3 transition-all duration-300 ${(accessForm.role === 'admin' || accessForm.role === 'finance' || accessForm.role === 'seller_admin') ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'}`}>
                                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Work Assignment (Modules)</p>
                                 <div className="grid grid-cols-1 gap-3">
                                     {[
@@ -528,7 +626,7 @@ const UserListScreen = () => {
                                     ].map((perm) => (
                                         <div
                                             key={perm.key}
-                                            onClick={() => accessForm.isAdmin && togglePermission(perm.key)}
+                                            onClick={() => (accessForm.role !== 'user') && togglePermission(perm.key)}
                                             className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${accessForm.permissions[perm.key]
                                                 ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
                                                 : 'border-gray-100 dark:border-slate-700 hover:border-indigo-200'
@@ -548,7 +646,7 @@ const UserListScreen = () => {
                             </div>
 
                             {/* Category Scope Section */}
-                            <div className={`space-y-3 pt-4 border-t border-gray-100 dark:border-slate-700 transition-all duration-300 ${accessForm.isAdmin ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'}`}>
+                            <div className={`space-y-3 pt-4 border-t border-gray-100 dark:border-slate-700 transition-all duration-300 ${(accessForm.role === 'admin' || accessForm.role === 'finance' || accessForm.role === 'seller_admin') ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'}`}>
                                 <div>
                                     <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Category Scope (Recommended)</p>
                                     <p className="text-xs text-gray-500 mt-1">Restrict admin to specific categories. Leave empty for access to ALL categories.</p>

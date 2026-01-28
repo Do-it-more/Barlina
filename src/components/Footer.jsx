@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
 
 const Footer = () => {
     // State for mobile accordion sections
     const [openSection, setOpenSection] = useState(null);
+    const { settings } = useSettings();
 
     const toggleSection = (section) => {
         setOpenSection(openSection === section ? null : section);
     };
+
+    const companyName = settings?.companyName || 'BARLINA';
+    const companyAddress = settings?.companyAddress || '13/3, Mukasha parur, villupuram -123463';
+    const companyPhone = settings?.companyPhone || '+91 88256 35443';
+    const companyEmail = settings?.companyEmail || 'support@barlinafashion.com';
 
     return (
         <footer className="bg-white dark:bg-slate-900 pt-16 pb-24 md:pb-8 border-t border-gray-100 dark:border-slate-800 transition-colors duration-300">
@@ -19,10 +26,10 @@ const Footer = () => {
                         <Link to="/" className="inline-block mb-6 group">
                             <div className="flex flex-col items-start">
                                 <span className="font-serif text-2xl md:text-3xl tracking-[0.15em] font-bold text-slate-900 dark:text-white leading-none group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Playfair Display", serif' }}>
-                                    BARLINA
+                                    {companyName.split(' ')[0].toUpperCase()}
                                 </span>
                                 <span className="text-[10px] md:text-xs tracking-[0.4em] font-light lowercase text-gray-500 dark:text-gray-400 mt-1 w-full text-center">
-                                    fashion design
+                                    {companyName.substring(companyName.indexOf(' ') + 1) || 'fashion design'}
                                 </span>
                             </div>
                         </Link>
@@ -79,7 +86,8 @@ const Footer = () => {
                                 { name: 'Wishlist', path: '/wishlist' },
                                 { name: 'Terms & Conditions', path: '/terms-conditions' },
                                 { name: 'Privacy Policy', path: '/privacy-policy' },
-                                { name: 'Returns', path: '/returns' }
+                                { name: 'Returns', path: '/returns' },
+                                { name: 'Shipping Policy', path: '/shipping-policy' }
                             ].map((item) => (
                                 <li key={item.name}>
                                     <Link to={item.path} className="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors block py-1">
@@ -103,32 +111,54 @@ const Footer = () => {
                         </button>
                         <ul className={`${openSection === 'contactUs' ? 'block' : 'hidden'} md:block space-y-4`}>
                             <li className="flex items-start gap-4">
-                                <MapPin className="h-6 w-6 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                                <a
-                                    href="https://www.google.com/maps/search/?api=1&query=13/3+Mukasha+parur+villupuram"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left"
-                                >
-                                    13/3, Mukasha parur, villupuram -123463
-                                </a>
+                                <MapPin className="h-6 w-6 text-indigo-600 dark:text-indigo-400 shrink-0 mt-1" />
+                                {(() => {
+                                    // Helper logic purely for rendering
+                                    let addressStr = '';
+                                    if (typeof companyAddress === 'string') {
+                                        addressStr = companyAddress;
+                                    } else if (typeof companyAddress === 'object' && companyAddress !== null) {
+                                        const parts = [
+                                            companyAddress.doorNo,
+                                            companyAddress.street,
+                                            companyAddress.city,
+                                            companyAddress.district,
+                                            companyAddress.state,
+                                            companyAddress.pincode
+                                        ].filter(Boolean);
+                                        addressStr = parts.join(', ');
+                                    } else {
+                                        addressStr = 'Address not available';
+                                    }
+
+                                    return (
+                                        <a
+                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressStr)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left leading-relaxed"
+                                        >
+                                            {addressStr}
+                                        </a>
+                                    );
+                                })()}
                             </li>
                             <li className="flex items-center gap-4">
                                 <Phone className="h-5 w-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                                 <a
-                                    href="tel:+918825635443"
+                                    href={`tel:${companyPhone.replace(/\s/g, '')}`}
                                     className="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                                 >
-                                    +91 88256 35443
+                                    {companyPhone}
                                 </a>
                             </li>
                             <li className="flex items-center gap-4">
                                 <Mail className="h-5 w-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                                 <a
-                                    href="mailto:support@barlinafashion.com"
+                                    href={`mailto:${companyEmail}`}
                                     className="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                                 >
-                                    support@barlinafashion.com
+                                    {companyEmail}
                                 </a>
                             </li>
                         </ul>
@@ -137,7 +167,7 @@ const Footer = () => {
 
                 <div className="border-t border-gray-100 dark:border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
                     <p className="text-gray-500 dark:text-gray-400 text-sm">
-                        © {new Date().getFullYear()} Barlina Fashion Design. All rights reserved.
+                        © {new Date().getFullYear()} {companyName}. All rights reserved.
                     </p>
 
                 </div>
