@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
-import { Save, Settings as SettingsIcon, Truck, CreditCard, Lock, Shield, Mail, Key, ShieldCheck, MessageSquare, ShoppingBag, Gift, Building2, Phone, FileText, MapPin, Edit2, X, Check } from 'lucide-react';
+import { Save, Settings as SettingsIcon, Truck, CreditCard, Lock, Shield, Mail, Key, ShieldCheck, MessageSquare, ShoppingBag, Gift, Building2, Phone, FileText, MapPin, Edit2, X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const SettingsScreen = () => {
@@ -52,6 +52,7 @@ const SettingsScreen = () => {
     // Company Editing State
     const [isEditingCompany, setIsEditingCompany] = useState(false);
     const [isSavingCompany, setIsSavingCompany] = useState(false);
+    const [isCompanyInfoExpanded, setIsCompanyInfoExpanded] = useState(true);
 
     const handleTextChange = (key, value) => {
         setSettings(prev => ({ ...prev, [key]: value }));
@@ -216,12 +217,22 @@ const SettingsScreen = () => {
             {/* Company Settings */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div
+                        className="flex items-center gap-3 cursor-pointer"
+                        onClick={() => setIsCompanyInfoExpanded(!isCompanyInfoExpanded)}
+                    >
                         <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                             <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Company Information</h2>
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                Company Information
+                                {isCompanyInfoExpanded ? (
+                                    <ChevronUp className="h-4 w-4 text-gray-400" />
+                                ) : (
+                                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                                )}
+                            </h2>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Manage business details for invoices</p>
                         </div>
                     </div>
@@ -260,134 +271,154 @@ const SettingsScreen = () => {
                     </div>
                 </div>
 
-                <div className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity duration-200 ${!isEditingCompany ? 'opacity-80' : 'opacity-100'}`}>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
-                        <div className="relative">
-                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                {isCompanyInfoExpanded && (
+                    <div className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity duration-200 ${!isEditingCompany ? 'opacity-80' : 'opacity-100'}`}>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
+                            <div className="relative">
+                                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <input
+                                    type="text"
+                                    disabled={!isEditingCompany}
+                                    value={settings.companyName || ''}
+                                    onChange={(e) => handleTextChange('companyName', e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                            <div className="relative">
+                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <input
+                                    type="text"
+                                    disabled={!isEditingCompany}
+                                    value={settings.companyPhone || ''}
+                                    onChange={(e) => handleTextChange('companyPhone', e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Support Email</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <input
+                                    type="email"
+                                    disabled={!isEditingCompany}
+                                    value={settings.companyEmail || ''}
+                                    onChange={(e) => handleTextChange('companyEmail', e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST Number</label>
+                            <div className="relative">
+                                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <input
+                                    type="text"
+                                    disabled={!isEditingCompany}
+                                    value={settings.companyGST || ''}
+                                    onChange={(e) => handleTextChange('companyGST', e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PAN Number</label>
+                            <div className="relative">
+                                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <input
+                                    type="text"
+                                    disabled={!isEditingCompany}
+                                    value={settings.companyPAN || ''}
+                                    onChange={(e) => handleTextChange('companyPAN', e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                />
+                            </div>
+                        </div>
+                        {/* Address Fields */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Door No</label>
                             <input
                                 type="text"
                                 disabled={!isEditingCompany}
-                                value={settings.companyName || ''}
-                                onChange={(e) => handleTextChange('companyName', e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                value={settings.companyAddress?.doorNo || ''}
+                                onChange={(e) => handleAddressChange('doorNo', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
                             />
                         </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
-                        <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Street / Landmark</label>
                             <input
                                 type="text"
                                 disabled={!isEditingCompany}
-                                value={settings.companyPhone || ''}
-                                onChange={(e) => handleTextChange('companyPhone', e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                value={settings.companyAddress?.street || ''}
+                                onChange={(e) => handleAddressChange('street', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
                             />
                         </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Support Email</label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                            <input
-                                type="email"
-                                disabled={!isEditingCompany}
-                                value={settings.companyEmail || ''}
-                                onChange={(e) => handleTextChange('companyEmail', e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST Number</label>
-                        <div className="relative">
-                            <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">City / Area</label>
                             <input
                                 type="text"
                                 disabled={!isEditingCompany}
-                                value={settings.companyGST || ''}
-                                onChange={(e) => handleTextChange('companyGST', e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                value={settings.companyAddress?.city || ''}
+                                onChange={(e) => handleAddressChange('city', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
                             />
                         </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PAN Number</label>
-                        <div className="relative">
-                            <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">District</label>
                             <input
                                 type="text"
                                 disabled={!isEditingCompany}
-                                value={settings.companyPAN || ''}
-                                onChange={(e) => handleTextChange('companyPAN', e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                value={settings.companyAddress?.district || ''}
+                                onChange={(e) => handleAddressChange('district', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State</label>
+                            <div className="relative">
+                                <select
+                                    disabled={!isEditingCompany}
+                                    value={settings.companyAddress?.state || ''}
+                                    onChange={(e) => handleAddressChange('state', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50 appearance-none pr-10"
+                                >
+                                    <option value="">Select State</option>
+                                    {[
+                                        "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar",
+                                        "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa",
+                                        "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka",
+                                        "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
+                                        "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+                                        "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
+                                    ].map(state => (
+                                        <option key={state} value={state}>{state}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pincode</label>
+                            <input
+                                type="text"
+                                disabled={!isEditingCompany}
+                                value={settings.companyAddress?.pincode || ''}
+                                onChange={(e) => handleAddressChange('pincode', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
                             />
                         </div>
                     </div>
-                    {/* Address Fields */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Door No</label>
-                        <input
-                            type="text"
-                            disabled={!isEditingCompany}
-                            value={settings.companyAddress?.doorNo || ''}
-                            onChange={(e) => handleAddressChange('doorNo', e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Street / Landmark</label>
-                        <input
-                            type="text"
-                            disabled={!isEditingCompany}
-                            value={settings.companyAddress?.street || ''}
-                            onChange={(e) => handleAddressChange('street', e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">City / Area</label>
-                        <input
-                            type="text"
-                            disabled={!isEditingCompany}
-                            value={settings.companyAddress?.city || ''}
-                            onChange={(e) => handleAddressChange('city', e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">District</label>
-                        <input
-                            type="text"
-                            disabled={!isEditingCompany}
-                            value={settings.companyAddress?.district || ''}
-                            onChange={(e) => handleAddressChange('district', e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State</label>
-                        <input
-                            type="text"
-                            disabled={!isEditingCompany}
-                            value={settings.companyAddress?.state || ''}
-                            onChange={(e) => handleAddressChange('state', e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pincode</label>
-                        <input
-                            type="text"
-                            disabled={!isEditingCompany}
-                            value={settings.companyAddress?.pincode || ''}
-                            onChange={(e) => handleAddressChange('pincode', e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                        />
-                    </div>
-                </div>
+                )}
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
@@ -750,7 +781,7 @@ const SettingsScreen = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

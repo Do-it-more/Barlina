@@ -46,13 +46,9 @@ const FinanceLayoutContent = () => {
     ];
 
     // Append Permission-Based Links
-    if (user?.permissions?.orders) navItems.push({ path: '/admin/orders', icon: ShoppingBag, label: 'Orders' });
-    if (user?.permissions?.products) navItems.push({ path: '/admin/products', icon: Package, label: 'Products' });
-    if (user?.permissions?.categories) navItems.push({ path: '/admin/categories', icon: List, label: 'Categories' });
-    if (user?.permissions?.returns) navItems.push({ path: '/admin/returns', icon: RotateCcw, label: 'Returns' });
-    if (user?.permissions?.complaints) navItems.push({ path: '/admin/complaints', icon: AlertCircle, label: 'Complaints' });
-    if (user?.permissions?.coupons) navItems.push({ path: '/admin/coupons', icon: Tag, label: 'Coupons' });
-    if (user?.permissions?.users) navItems.push({ path: '/admin/users', icon: Users, label: 'Users' });
+    // Orders and Returns removed from Finance Portal Sidebar by user request
+    // if (user?.permissions?.orders) navItems.push({ path: '/admin/orders', icon: ShoppingBag, label: 'Orders' });
+    // if (user?.permissions?.returns) navItems.push({ path: '/admin/returns', icon: RotateCcw, label: 'Returns' });
 
     navItems.push({ path: '/finance/settings', icon: Settings, label: 'Settings' });
     navItems.push({ path: '/finance/team-chat', icon: MessageSquare, label: 'Team Chat' });
