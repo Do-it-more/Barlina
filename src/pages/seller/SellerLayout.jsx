@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -12,16 +12,58 @@ import {
     Bell,
     HelpCircle,
     Package,
-    ShoppingBag
+    ShoppingBag,
+    MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAdminChat } from '../../context/AdminChatContext';
+import api from '../../services/api';
+import NotificationDropdown from '../../components/common/NotificationDropdown';
 
 const SellerLayout = () => {
     const { logout, user } = useAuth();
     const { theme } = useTheme();
+    const { getTotalUnreadCount } = useAdminChat(); // Get unread count
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [pendingOrderCount, setPendingOrderCount] = useState(0);
+    const [lastSeenCount, setLastSeenCount] = useState(
+        parseInt(localStorage.getItem('seller_last_seen_pending_count') || '0', 10)
+    );
+
+    useEffect(() => {
+        checkPendingOrders();
+        const interval = setInterval(checkPendingOrders, 30000); // Poll every 30s
+        return () => clearInterval(interval);
+    }, []);
+
+    // When visiting orders page, mark all as seen
+    useEffect(() => {
+        if (location.pathname === '/seller/orders') {
+            setLastSeenCount(pendingOrderCount);
+            localStorage.setItem('seller_last_seen_pending_count', pendingOrderCount.toString());
+        }
+    }, [location.pathname, pendingOrderCount]);
+
+    const checkPendingOrders = async () => {
+        try {
+            const { data } = await api.get('/sellers/orders?status=Pending&limit=1');
+            const newTotal = data.total || 0;
+            setPendingOrderCount(newTotal);
+
+            // If pending count dropped (e.g. orders shipped), sync lastSeen to avoid negative logic issues
+            // But only if we aren't currently viewing the page (which is handled by the other useEffect)
+            if (newTotal < lastSeenCount) {
+                setLastSeenCount(newTotal);
+                localStorage.setItem('seller_last_seen_pending_count', newTotal.toString());
+            }
+        } catch (error) {
+            console.error('Failed to check pending orders:', error);
+        }
+    };
+
+    const notificationCount = Math.max(0, pendingOrderCount - lastSeenCount);
 
     const navItems = [
         { path: '/seller/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -30,6 +72,7 @@ const SellerLayout = () => {
         { path: '/seller/bank', icon: CreditCard, label: 'Bank & Settlements' },
         { path: '/seller/products', icon: Package, label: 'Products', disabled: false }, // Future
         { path: '/seller/orders', icon: ShoppingBag, label: 'Orders', disabled: false }, // Future
+        { path: '/seller/team-chat', icon: MessageSquare, label: 'Team Chat' },
         { path: '/seller/support', icon: HelpCircle, label: 'Seller Support' },
     ];
 
@@ -57,7 +100,7 @@ const SellerLayout = () => {
                         <Link
                             key={item.path}
                             to={item.disabled ? '#' : item.path}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative
                                 ${location.pathname === item.path
                                     ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
                                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'
@@ -67,7 +110,20 @@ const SellerLayout = () => {
                             onClick={() => setIsMobileMenuOpen(false)}
                         >
                             <item.icon className="h-5 w-5" />
-                            {item.label}
+                            <span className="flex-1">{item.label}</span>
+
+                            {item.label === 'Orders' && notificationCount > 0 && (
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                    {notificationCount > 99 ? '99+' : notificationCount}
+                                </span>
+                            )}
+
+                            {item.label === 'Team Chat' && getTotalUnreadCount() > 0 && (
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white shadow-sm animate-pulse">
+                                    {getTotalUnreadCount() > 99 ? '99+' : getTotalUnreadCount()}
+                                </span>
+                            )}
+
                             {item.disabled && <span className="text-[10px] ml-auto bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-gray-500">Coming Soon</span>}
                         </Link>
                     ))}
@@ -96,10 +152,7 @@ const SellerLayout = () => {
                     </button>
 
                     <div className="ml-auto flex items-center gap-4">
-                        <button className="relative p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-                            <Bell className="h-5 w-5" />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </button>
+                        <NotificationDropdown />
                         <div className="flex items-center gap-3 pl-4 border-l border-gray-100 dark:border-slate-700">
                             <div className="text-right hidden sm:block">
                                 <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.name}</p>

@@ -51,6 +51,7 @@ export const AdminChatProvider = ({ children }) => {
         // When server confirms we're set up, refetch chats for latest online status
         newSocket.on('connected', () => {
             console.log('[Chat] Server confirmed connection');
+            fetchChats();
         });
 
         // Listen for global incoming messages (for unread counts/notifications)
@@ -137,6 +138,19 @@ export const AdminChatProvider = ({ children }) => {
                 return acc;
             }, []);
             setChats(uniqueChats);
+
+            // Initialize Unread Counts from Server Data
+            const initialUnreadCounts = {};
+            let hasAny = false;
+            uniqueChats.forEach(chat => {
+                if (chat.unreadCount > 0) {
+                    initialUnreadCounts[chat._id.toString()] = chat.unreadCount;
+                    hasAny = true;
+                }
+            });
+            setUnreadCounts(initialUnreadCounts);
+            setHasUnreadMessages(hasAny);
+
         } catch (error) {
             console.error("Failed to load chats", error);
         }

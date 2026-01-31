@@ -1,58 +1,42 @@
 import React, { useState, useEffect } from 'react';
+import {
+    Save, Building2, Phone, Mail, FileText, Check, ChevronDown, Edit2, X,
+    Truck, CreditCard, Gift, MessageSquare, Settings as SettingsIcon, ShoppingBag, Key, ShieldCheck
+} from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
-import { Save, Settings as SettingsIcon, Truck, CreditCard, Lock, Shield, Mail, Key, ShieldCheck, MessageSquare, ShoppingBag, Gift, Building2, Phone, FileText, MapPin, Edit2, X, Check, ChevronDown, ChevronUp } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 
 const SettingsScreen = () => {
-    const { user, login } = useAuth(); // Moved to top
     const { showToast } = useToast();
-
     const [settings, setSettings] = useState({
-        isCodAvailable: true,
+        paymentGateways: {
+            cashfree: { appId: '', secretKey: '', isProduction: false },
+            instamojo: { apiKey: '', authToken: '', isProduction: false },
+            razorpay: { keyId: '', keySecret: '', isProduction: false },
+            activeGateway: 'razorpay'
+        },
+        companyAddress: { street: '', city: '', state: '', pincode: '' },
         companyName: '',
-        companyGST: '',
-        companyPAN: '',
-        companyAddress: {},
         companyPhone: '',
         companyEmail: '',
-        paymentGateways: {
-            activeGateway: 'cashfree',
-            cashfree: { isActive: true, appId: '', secretKey: '', isProduction: false },
-            instamojo: { isActive: false, apiKey: '', authToken: '', isProduction: false }
-        }
+        companyGST: '',
+        isCodAvailable: true,
+        isStockCountVisible: true,
+        isSpecialOffersEnabled: true,
+        isChatbotEnabled: true,
+        defaultEstimatedDeliveryDays: 5,
+        returnPolicyDays: 7,
+        areReturnsActive: true
     });
     const [loading, setLoading] = useState(true);
-
-    // Super Admin State
-    const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
-    const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' });
-    const [emailForm, setEmailForm] = useState({ email: '' });
-
-    const checkTwoFactorStatus = async () => {
-        // ideally fetch from /auth/me or verify a specific endpoint, 
-        // but for now user object might have it if updated context
-        // We'll trust the user context for now or fetch fresh profile
-        try {
-            const { data } = await api.get('/auth/me');
-            setIsTwoFactorEnabled(data.isTwoFactorEnabled);
-            setEmailForm({ email: data.email });
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    useEffect(() => {
-        fetchSettings();
-        if (user?.role === 'super_admin') {
-            checkTwoFactorStatus();
-        }
-    }, [user]);
 
     // Company Editing State
     const [isEditingCompany, setIsEditingCompany] = useState(false);
     const [isSavingCompany, setIsSavingCompany] = useState(false);
-    const [isCompanyInfoExpanded, setIsCompanyInfoExpanded] = useState(true);
+    const [isSavingPayment, setIsSavingPayment] = useState(false);
+    const [isCompanyInfoExpanded, setIsCompanyInfoExpanded] = useState(false);
+    const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+    const [showPaymentSaveConfirm, setShowPaymentSaveConfirm] = useState(false);
 
     const handleTextChange = (key, value) => {
         setSettings(prev => ({ ...prev, [key]: value }));
@@ -61,11 +45,19 @@ const SettingsScreen = () => {
     const handleAddressChange = (key, value) => {
         setSettings(prev => ({
             ...prev,
-            companyAddress: {
-                ...(typeof prev.companyAddress === 'object' ? prev.companyAddress : {}),
-                [key]: value
-            }
+            companyAddress: { ...prev.companyAddress, [key]: value }
         }));
+    };
+
+    const handleToggle = async (key, value) => {
+        try {
+            const updatedSettings = { ...settings, [key]: value };
+            setSettings(updatedSettings);
+            await api.put('/settings', { [key]: value });
+            showToast('Settings updated', 'success');
+        } catch (error) {
+            showToast('Failed to update settings', 'error');
+        }
     };
 
     const handlePaymentConfigChange = (gateway, key, value) => {
@@ -73,10 +65,7 @@ const SettingsScreen = () => {
             ...prev,
             paymentGateways: {
                 ...prev.paymentGateways,
-                [gateway]: {
-                    ...prev.paymentGateways?.[gateway],
-                    [key]: value
-                }
+                [gateway]: { ...prev.paymentGateways[gateway], [key]: value }
             }
         }));
     };
@@ -84,21 +73,22 @@ const SettingsScreen = () => {
     const handleActiveGatewayChange = (value) => {
         setSettings(prev => ({
             ...prev,
-            paymentGateways: {
-                ...prev.paymentGateways,
-                activeGateway: value
-            }
+            paymentGateways: { ...prev.paymentGateways, activeGateway: value }
         }));
     };
 
     const savePaymentSettings = async () => {
+        setIsSavingPayment(true);
         try {
             await api.put('/settings', {
                 paymentGateways: settings.paymentGateways
             });
             showToast('Payment gateway settings updated', 'success');
+            setShowPaymentSaveConfirm(false);
         } catch (error) {
             showToast('Failed to update payment settings', 'error');
+        } finally {
+            setIsSavingPayment(false);
         }
     };
 
@@ -110,69 +100,27 @@ const SettingsScreen = () => {
                 companyPhone: settings.companyPhone,
                 companyEmail: settings.companyEmail,
                 companyGST: settings.companyGST,
-                companyPAN: settings.companyPAN,
                 companyAddress: settings.companyAddress
             });
-            showToast('Company details updated successfully', 'success');
+            showToast('Company details updated', 'success');
             setIsEditingCompany(false);
+            setShowSaveConfirm(false);
         } catch (error) {
-            showToast('Failed to save company details', 'error');
+            showToast('Failed to update company details', 'error');
         } finally {
             setIsSavingCompany(false);
         }
     };
 
     const cancelEditing = () => {
+        fetchSettings(); // Reset to original values
         setIsEditingCompany(false);
-        fetchSettings(); // Revert changes
-    };
-
-    const handlePasswordChange = async (e) => {
-        e.preventDefault();
-        try {
-            await api.put('/auth/password', passwordForm);
-            showToast('Password updated successfully', 'success');
-            setPasswordForm({ currentPassword: '', newPassword: '' });
-        } catch (error) {
-            showToast(error.response?.data?.message || 'Failed to update password', 'error');
-        }
-    };
-
-    const handleEmailChange = async (e) => {
-        e.preventDefault();
-        try {
-            await api.put('/auth/profile', { email: emailForm.email });
-            showToast('Email updated successfully', 'success');
-        } catch (error) {
-            showToast(error.response?.data?.message || 'Failed to update email', 'error');
-        }
-    };
-
-    const toggleTwoFactor = async () => {
-        try {
-            const { data } = await api.put('/auth/2fa');
-            setIsTwoFactorEnabled(data.isTwoFactorEnabled);
-            showToast(data.message, 'success');
-        } catch (error) {
-            showToast(error.response?.data?.message || 'Failed to toggle 2FA', 'error');
-        }
     };
 
     const fetchSettings = async () => {
         try {
             const { data } = await api.get('/settings');
-            // Handle legacy address string
-            if (typeof data.companyAddress === 'string') {
-                data.companyAddress = {
-                    street: data.companyAddress,
-                    doorNo: '',
-                    city: '',
-                    district: '',
-                    state: '',
-                    pincode: ''
-                };
-            }
-            setSettings(data);
+            if (data) setSettings(prev => ({ ...prev, ...data }));
         } catch (error) {
             showToast('Failed to fetch settings', 'error');
         } finally {
@@ -180,23 +128,9 @@ const SettingsScreen = () => {
         }
     };
 
-    const handleToggle = async (key, value) => {
-        // If value is provided, use it. Otherwise, toggle boolean.
-        const newValue = value !== undefined ? value : !settings[key];
-        const previousValue = settings[key];
-
-        // Optimistic update
-        setSettings(prev => ({ ...prev, [key]: newValue }));
-
-        try {
-            await api.put('/settings', { [key]: newValue });
-            showToast('Settings updated successfully', 'success');
-        } catch (error) {
-            // Revert on error
-            setSettings(prev => ({ ...prev, [key]: previousValue }));
-            showToast('Failed to update settings', 'error');
-        }
-    };
+    useEffect(() => {
+        fetchSettings();
+    }, []);
 
     if (loading) {
         return (
@@ -214,213 +148,222 @@ const SettingsScreen = () => {
             </div>
 
 
-            {/* Company Settings */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                    <div
-                        className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => setIsCompanyInfoExpanded(!isCompanyInfoExpanded)}
-                    >
-                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                            <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            {/* Company Information Card */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md group">
+                {/* Card Header (Interactive) */}
+                <div
+                    className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors"
+                    onClick={() => setIsCompanyInfoExpanded(!isCompanyInfoExpanded)}
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                            <Building2 className="h-5 w-5 text-slate-600 dark:text-slate-300" />
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 Company Information
-                                {isCompanyInfoExpanded ? (
-                                    <ChevronUp className="h-4 w-4 text-gray-400" />
-                                ) : (
-                                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                                {!isCompanyInfoExpanded && settings.companyName && (
+                                    <span className="text-xs font-normal text-gray-400 hidden sm:inline">• {settings.companyName}</span>
                                 )}
                             </h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Manage business details for invoices</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Basic details about your business entity</p>
                         </div>
                     </div>
-                    <div>
-                        {!isEditingCompany ? (
-                            <button
-                                onClick={() => setIsEditingCompany(true)}
-                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                            >
-                                <Edit2 className="h-4 w-4" />
-                                Edit Details
-                            </button>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={cancelEditing}
-                                    className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                                    title="Cancel"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
-                                <button
-                                    onClick={saveCompanyInfo}
-                                    disabled={isSavingCompany}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                    {isSavingCompany ? (
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                        <Check className="h-4 w-4" />
-                                    )}
-                                    Save Changes
-                                </button>
-                            </div>
+
+                    <div className="flex items-center gap-4">
+                        {isEditingCompany && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full border border-blue-100 dark:border-blue-800 animate-pulse">
+                                <span className="w-1 h-1 bg-blue-600 dark:bg-blue-400 rounded-full"></span>
+                                EDITING
+                            </span>
                         )}
+                        <div className={`p-1 rounded-md text-gray-400 transition-all duration-300 ${isCompanyInfoExpanded ? 'rotate-180 text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700' : 'group-hover:text-slate-600 dark:group-hover:text-slate-300 group-hover:translate-y-0.5'}`}>
+                            <ChevronDown className="h-5 w-5" />
+                        </div>
                     </div>
                 </div>
 
+                {/* Card Content (Expandable) */}
                 {isCompanyInfoExpanded && (
-                    <div className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity duration-200 ${!isEditingCompany ? 'opacity-80' : 'opacity-100'}`}>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
-                            <div className="relative">
-                                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    disabled={!isEditingCompany}
-                                    value={settings.companyName || ''}
-                                    onChange={(e) => handleTextChange('companyName', e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
-                            <div className="relative">
-                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    disabled={!isEditingCompany}
-                                    value={settings.companyPhone || ''}
-                                    onChange={(e) => handleTextChange('companyPhone', e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Support Email</label>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                <input
-                                    type="email"
-                                    disabled={!isEditingCompany}
-                                    value={settings.companyEmail || ''}
-                                    onChange={(e) => handleTextChange('companyEmail', e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST Number</label>
-                            <div className="relative">
-                                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    disabled={!isEditingCompany}
-                                    value={settings.companyGST || ''}
-                                    onChange={(e) => handleTextChange('companyGST', e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PAN Number</label>
-                            <div className="relative">
-                                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    disabled={!isEditingCompany}
-                                    value={settings.companyPAN || ''}
-                                    onChange={(e) => handleTextChange('companyPAN', e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                                />
-                            </div>
-                        </div>
-                        {/* Address Fields */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Door No</label>
-                            <input
-                                type="text"
-                                disabled={!isEditingCompany}
-                                value={settings.companyAddress?.doorNo || ''}
-                                onChange={(e) => handleAddressChange('doorNo', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Street / Landmark</label>
-                            <input
-                                type="text"
-                                disabled={!isEditingCompany}
-                                value={settings.companyAddress?.street || ''}
-                                onChange={(e) => handleAddressChange('street', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">City / Area</label>
-                            <input
-                                type="text"
-                                disabled={!isEditingCompany}
-                                value={settings.companyAddress?.city || ''}
-                                onChange={(e) => handleAddressChange('city', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">District</label>
-                            <input
-                                type="text"
-                                disabled={!isEditingCompany}
-                                value={settings.companyAddress?.district || ''}
-                                onChange={(e) => handleAddressChange('district', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State</label>
-                            <div className="relative">
-                                <select
-                                    disabled={!isEditingCompany}
-                                    value={settings.companyAddress?.state || ''}
-                                    onChange={(e) => handleAddressChange('state', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50 appearance-none pr-10"
-                                >
-                                    <option value="">Select State</option>
-                                    {[
-                                        "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar",
-                                        "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa",
-                                        "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka",
-                                        "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
-                                        "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
-                                        "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
-                                    ].map(state => (
-                                        <option key={state} value={state}>{state}</option>
-                                    ))}
-                                </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                                    </svg>
+                    <div className="border-t border-gray-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-2 duration-300">
+                        {/* Form Body */}
+                        <div className={`p-8 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 transition-all duration-300 ${!isEditingCompany ? 'opacity-70 grayscale-[0.2]' : 'opacity-100'}`}>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
+                                <div className="relative">
+                                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        disabled={!isEditingCompany}
+                                        value={settings.companyName || ''}
+                                        onChange={(e) => handleTextChange('companyName', e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                    />
                                 </div>
                             </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pincode</label>
-                            <input
-                                type="text"
-                                disabled={!isEditingCompany}
-                                value={settings.companyAddress?.pincode || ''}
-                                onChange={(e) => handleAddressChange('pincode', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
-                            />
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                                <div className="relative">
+                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        disabled={!isEditingCompany}
+                                        value={settings.companyPhone || ''}
+                                        onChange={(e) => handleTextChange('companyPhone', e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Support Email</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <input
+                                        type="email"
+                                        disabled={!isEditingCompany}
+                                        value={settings.companyEmail || ''}
+                                        onChange={(e) => handleTextChange('companyEmail', e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST Number (Optional)</label>
+                                <div className="relative">
+                                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        disabled={!isEditingCompany}
+                                        value={settings.companyGST || ''}
+                                        onChange={(e) => handleTextChange('companyGST', e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-sm uppercase disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                        placeholder="Enter GSTIN"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Address Section */}
+                            <div className="md:col-span-2 mt-4">
+                                <label className="block text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Registration Address</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Street / Building</label>
+                                        <input
+                                            type="text"
+                                            disabled={!isEditingCompany}
+                                            value={settings.companyAddress?.street || ''}
+                                            onChange={(e) => handleAddressChange('street', e.target.value)}
+                                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">City</label>
+                                        <input
+                                            type="text"
+                                            disabled={!isEditingCompany}
+                                            value={settings.companyAddress?.city || ''}
+                                            onChange={(e) => handleAddressChange('city', e.target.value)}
+                                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State</label>
+                                        <input
+                                            type="text"
+                                            disabled={!isEditingCompany}
+                                            value={settings.companyAddress?.state || ''}
+                                            onChange={(e) => handleAddressChange('state', e.target.value)}
+                                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                            placeholder="Enter State"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pincode</label>
+                                        <input
+                                            type="text"
+                                            disabled={!isEditingCompany}
+                                            value={settings.companyAddress?.pincode || ''}
+                                            onChange={(e) => handleAddressChange('pincode', e.target.value)}
+                                            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-900/50"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Bottom Actions Toolbar */}
+                            <div className="px-8 py-4 bg-gray-50/50 dark:bg-slate-900/30 border-t border-gray-100 dark:border-slate-700 flex justify-end items-center gap-3">
+                                {!isEditingCompany ? (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setIsEditingCompany(true); }}
+                                        className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-blue-600 hover:text-white dark:text-blue-400 bg-white dark:bg-slate-800 hover:bg-blue-600 dark:hover:bg-blue-600 rounded-lg transition-all border border-blue-200 dark:border-blue-800 shadow-sm"
+                                    >
+                                        <Edit2 className="h-4 w-4" />
+                                        EDIT DETAILS
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); cancelEditing(); }}
+                                            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors border border-gray-200 dark:border-slate-700"
+                                        >
+                                            <X className="h-4 w-4" />
+                                            CANCEL
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setShowSaveConfirm(true); }}
+                                            disabled={isSavingCompany}
+                                            className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
+                                        >
+                                            {isSavingCompany ? (
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            ) : (
+                                                <Check className="h-4 w-4" />
+                                            )}
+                                            SAVE CHANGES
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
             </div>
 
+            {/* Save Confirmation Modal */}
+            {showSaveConfirm && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
+                                <ShieldCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Save Changes?</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 font-medium">
+                                Are you sure you want to update your company information? This will be reflected across the platform.
+                            </p>
+                            <div className="grid grid-cols-2 gap-3 w-full">
+                                <button
+                                    onClick={() => setShowSaveConfirm(false)}
+                                    className="px-4 py-2.5 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl transition-colors border border-gray-200 dark:border-slate-700"
+                                >
+                                    NOT NOW
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowSaveConfirm(false);
+                                        saveCompanyInfo();
+                                    }}
+                                    className="px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-lg shadow-blue-500/25"
+                                >
+                                    YES, UPDATE
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Payment Methods Card */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center gap-3">
                     <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
@@ -457,122 +400,44 @@ const SettingsScreen = () => {
                         </label>
                     </div>
 
-                    {/* Payment Gateway Configuration Section */}
-                    <div className="py-6 border-t border-gray-100 dark:border-slate-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <div>
-                                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Online Payment Gateways</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Configure credentials for payment providers</p>
-                            </div>
-                            <button
-                                onClick={savePaymentSettings}
-                                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
-                            >
-                                <Save className="h-4 w-4 inline mr-2" />
-                                Save Credentials
-                            </button>
-                        </div>
-
-                        {/* Active Gateway Selection */}
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Primary Payment Gateway</label>
-                            <div className="flex gap-4">
-                                <label className={`flex-1 border rounded-lg p-3 cursor-pointer transition-all ${settings.paymentGateways?.activeGateway === 'cashfree' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-slate-700'}`}>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="radio"
-                                            name="activeGateway"
-                                            value="cashfree"
-                                            checked={settings.paymentGateways?.activeGateway === 'cashfree'}
-                                            onChange={(e) => handleActiveGatewayChange(e.target.value)}
-                                            className="text-indigo-600 focus:ring-indigo-500"
-                                        />
-                                        <span className="font-semibold text-slate-900 dark:text-white">Cashfree Payments</span>
-                                    </div>
-                                </label>
-                                <label className={`flex-1 border rounded-lg p-3 cursor-pointer transition-all ${settings.paymentGateways?.activeGateway === 'instamojo' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-slate-700'}`}>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="radio"
-                                            name="activeGateway"
-                                            value="instamojo"
-                                            checked={settings.paymentGateways?.activeGateway === 'instamojo'}
-                                            onChange={(e) => handleActiveGatewayChange(e.target.value)}
-                                            className="text-indigo-600 focus:ring-indigo-500"
-                                        />
-                                        <span className="font-semibold text-slate-900 dark:text-white">Instamojo</span>
-                                    </div>
-                                </label>
-                            </div>
+                    {/* Razorpay Gateway Configuration Section */}
+                    <div className="py-8">
+                        <div className="mb-8">
+                            <h3 className="text-base font-bold text-slate-900 dark:text-white">Razorpay Gateway</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">Configure credentials for Razorpay payments</p>
                         </div>
 
                         {/* Credentials Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Cashfree Config */}
-                            <div className={`p-4 rounded-lg border ${settings.paymentGateways?.activeGateway === 'cashfree' ? 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800' : 'border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 opacity-70'}`}>
-                                <h4 className="font-medium text-slate-900 dark:text-white mb-3">Cashfree Credentials</h4>
+                            {/* Razorpay Config */}
+                            <div className="p-4 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                                <h4 className="font-medium text-slate-900 dark:text-white mb-3">Razorpay Credentials</h4>
                                 <div className="space-y-3">
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">App ID</label>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Key ID</label>
                                         <input
                                             type="text"
-                                            value={settings.paymentGateways?.cashfree?.appId || ''}
-                                            onChange={(e) => handlePaymentConfigChange('cashfree', 'appId', e.target.value)}
+                                            value={settings.paymentGateways?.razorpay?.keyId || ''}
+                                            onChange={(e) => handlePaymentConfigChange('razorpay', 'keyId', e.target.value)}
                                             className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-transparent text-slate-900 dark:text-white"
-                                            placeholder="Enter App ID"
+                                            placeholder="Enter Key ID"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Secret Key</label>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Key Secret</label>
                                         <input
                                             type="password"
-                                            value={settings.paymentGateways?.cashfree?.secretKey || ''}
-                                            onChange={(e) => handlePaymentConfigChange('cashfree', 'secretKey', e.target.value)}
+                                            value={settings.paymentGateways?.razorpay?.keySecret || ''}
+                                            onChange={(e) => handlePaymentConfigChange('razorpay', 'keySecret', e.target.value)}
                                             className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-transparent text-slate-900 dark:text-white"
-                                            placeholder="Enter Secret Key"
+                                            placeholder="Enter Key Secret"
                                         />
                                     </div>
                                     <div className="flex items-center gap-2 mt-2">
                                         <input
                                             type="checkbox"
-                                            checked={settings.paymentGateways?.cashfree?.isProduction || false}
-                                            onChange={(e) => handlePaymentConfigChange('cashfree', 'isProduction', e.target.checked)}
-                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                        />
-                                        <span className="text-sm text-gray-600 dark:text-gray-300">Production Mode</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Instamojo Config */}
-                            <div className={`p-4 rounded-lg border ${settings.paymentGateways?.activeGateway === 'instamojo' ? 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800' : 'border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 opacity-70'}`}>
-                                <h4 className="font-medium text-slate-900 dark:text-white mb-3">Instamojo Credentials</h4>
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">API Key</label>
-                                        <input
-                                            type="text"
-                                            value={settings.paymentGateways?.instamojo?.apiKey || ''}
-                                            onChange={(e) => handlePaymentConfigChange('instamojo', 'apiKey', e.target.value)}
-                                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-transparent text-slate-900 dark:text-white"
-                                            placeholder="Enter API Key"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Auth Token</label>
-                                        <input
-                                            type="password"
-                                            value={settings.paymentGateways?.instamojo?.authToken || ''}
-                                            onChange={(e) => handlePaymentConfigChange('instamojo', 'authToken', e.target.value)}
-                                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-transparent text-slate-900 dark:text-white"
-                                            placeholder="Enter Auth Token"
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={settings.paymentGateways?.instamojo?.isProduction || false}
-                                            onChange={(e) => handlePaymentConfigChange('instamojo', 'isProduction', e.target.checked)}
+                                            checked={settings.paymentGateways?.razorpay?.isProduction || false}
+                                            onChange={(e) => handlePaymentConfigChange('razorpay', 'isProduction', e.target.checked)}
                                             className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                         />
                                         <span className="text-sm text-gray-600 dark:text-gray-300">Production Mode</span>
@@ -580,9 +445,58 @@ const SettingsScreen = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Payment Bottom Actions */}
+                        <div className="mt-10 pt-6 border-t border-gray-100 dark:border-slate-700/50 flex justify-end">
+                            <button
+                                onClick={() => setShowPaymentSaveConfirm(true)}
+                                disabled={isSavingPayment}
+                                className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                            >
+                                <Save className="h-4 w-4" />
+                                SAVE CREDENTIALS
+                            </button>
+                        </div>
                     </div>
+
                 </div>
             </div>
+
+            {/* Payment Save Confirmation Modal */}
+            {showPaymentSaveConfirm && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4">
+                                <Key className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Update Credentials</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 font-medium">
+                                Updating payment gateway credentials can affect your checkout process. Please ensure the keys are correct.
+                            </p>
+                            <div className="grid grid-cols-2 gap-3 w-full">
+                                <button
+                                    onClick={() => setShowPaymentSaveConfirm(false)}
+                                    className="px-4 py-2.5 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl transition-colors border border-gray-200 dark:border-slate-700"
+                                >
+                                    BACK
+                                </button>
+                                <button
+                                    onClick={savePaymentSettings}
+                                    disabled={isSavingPayment}
+                                    className="px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2"
+                                >
+                                    {isSavingPayment ? (
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        "UPDATE NOW"
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Stock Configuration */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
@@ -673,7 +587,7 @@ const SettingsScreen = () => {
                     </div>
                     <div>
                         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Returns Configuration</h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Manage return policies for your store</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Manage global return policy</p>
                     </div>
                 </div>
 
@@ -781,7 +695,7 @@ const SettingsScreen = () => {
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
 

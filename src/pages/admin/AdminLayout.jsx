@@ -37,6 +37,7 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAdminChat } from '../../context/AdminChatContext';
+import NotificationDropdown from '../../components/common/NotificationDropdown';
 
 const AdminLayoutContent = () => {
     const { logout, user } = useAuth();
@@ -509,6 +510,11 @@ const AdminLayoutContent = () => {
                         </form>
                     </div>
 
+                    {/* Notifications */}
+                    <div className="mr-2">
+                        <NotificationDropdown />
+                    </div>
+
                     {/* Theme Toggle */}
                     <button
                         onClick={toggleTheme}
@@ -598,14 +604,9 @@ const AdminLayoutContent = () => {
     );
 };
 
-import { AdminChatProvider } from '../../context/AdminChatContext';
-import AdminChatWidget from '../../components/admin/AdminChatWidget';
-
 const AdminLayout = () => {
     return (
-        <AdminChatProvider>
-            <AdminLayoutContent />
-        </AdminChatProvider>
+        <AdminLayoutContent />
     );
 };
 export default AdminLayout;

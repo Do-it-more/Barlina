@@ -24,7 +24,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { AdminChatProvider } from '../../context/AdminChatContext';
+import { useAdminChat, AdminChatProvider } from '../../context/AdminChatContext';
 
 const FinanceLayoutContent = () => {
     const { logout, user } = useAuth();
@@ -32,6 +32,7 @@ const FinanceLayoutContent = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { getTotalUnreadCount } = useAdminChat(); // Get unread messages count
 
     useEffect(() => {
         if (user?.isFirstLogin && location.pathname !== '/finance/change-password') {
@@ -77,7 +78,7 @@ const FinanceLayoutContent = () => {
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                            className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                                 ${location.pathname === item.path
                                     ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-600/20 dark:text-emerald-400'
                                     : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
@@ -87,6 +88,12 @@ const FinanceLayoutContent = () => {
                         >
                             <item.icon className="h-5 w-5" />
                             {item.label}
+                            {/* Team Chat Notification Badge */}
+                            {item.path === '/finance/team-chat' && getTotalUnreadCount() > 0 && location.pathname !== item.path && (
+                                <span className="absolute right-3 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-green-500 px-1 text-xs font-bold text-white shadow-sm animate-pulse">
+                                    {getTotalUnreadCount() > 9 ? '9+' : getTotalUnreadCount()}
+                                </span>
+                            )}
                         </Link>
                     ))}
 

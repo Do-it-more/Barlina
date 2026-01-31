@@ -62,6 +62,10 @@ const ProductReviews = () => {
     const [showBulkRejectModal, setShowBulkRejectModal] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
     const [previewImage, setPreviewImage] = useState(null); // Add state for image preview
+    const [showBlockModal, setShowBlockModal] = useState(null);
+    const [showUnblockModal, setShowUnblockModal] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(null);
+    const [showBulkApproveModal, setShowBulkApproveModal] = useState(false);
 
     const isSuperAdmin = user?.role === 'super_admin';
 
@@ -138,7 +142,7 @@ const ProductReviews = () => {
     };
 
     const handleApprove = async (productId) => {
-        if (actionLoading) return; // Prevent double execution
+        if (actionLoading) return;
         setActionLoading(true);
         try {
             await api.put(`/admin/product-reviews/${productId}/approve`, {});
@@ -147,10 +151,19 @@ const ProductReviews = () => {
             fetchStats();
             setSelectedProduct(null);
         } catch (error) {
+            const status = error.response?.status;
             const message = error.response?.data?.message || 'Approval failed';
-            // If the product is no longer under review, it might have been approved by someone else 
-            // or by a double-click race condition. We'll treat it as "done".
-            if (message.includes('Only products under review')) {
+
+            // If it's a 400 Bad Request, it might be a secondary failure (like email)
+            // but the primary action (approval) succeeded.
+            if (status === 400) {
+                console.warn("Approval returned 400, checking status...");
+                // Optimistically assume success or warn user
+                showToast('Product likely approved, but with warnings (e.g. notification failed)', 'warning');
+                fetchProducts();
+                fetchStats();
+                setSelectedProduct(null);
+            } else if (message.includes('Only products under review')) {
                 showToast('Product is no longer pending review', 'info');
                 setSelectedProduct(null);
                 fetchProducts();
@@ -184,8 +197,12 @@ const ProductReviews = () => {
         }
     };
 
-    const handleBulkApprove = async () => {
-        if (!window.confirm(`Approve ${selectedItems.length} selected products?`)) return;
+    const handleBulkApprove = () => {
+        if (selectedItems.length === 0) return;
+        setShowBulkApproveModal(true);
+    };
+
+    const confirmBulkApprove = async () => {
         setActionLoading(true);
         try {
             await Promise.all(selectedItems.map(id => api.put(`/admin/product-reviews/${id}/approve`, {})));
@@ -193,6 +210,7 @@ const ProductReviews = () => {
             setSelectedItems([]);
             fetchProducts();
             fetchStats();
+            setShowBulkApproveModal(false);
         } catch (error) {
             console.error(error);
             showToast('Some approvals might have failed', 'error');
@@ -231,27 +249,62 @@ const ProductReviews = () => {
         }
     };
 
-    const handleBlock = async (productId) => {
-        if (!window.confirm('Block this product permanently?')) return;
+    const handleBlock = (productId) => {
+        setShowBlockModal(productId);
+    };
+
+    const confirmBlock = async () => {
+        if (!showBlockModal) return;
+        setActionLoading(true);
         try {
-            await api.put(`/admin/product-reviews/${productId}/block`, { reason: 'Policy violation' });
+            await api.put(`/admin/product-reviews/${showBlockModal}/block`, { reason: 'Policy violation' });
             showToast('Product blocked', 'success');
             fetchProducts();
             fetchStats();
+            setShowBlockModal(null);
+            if (selectedProduct?._id === showBlockModal) setSelectedProduct(null);
         } catch (error) {
             showToast(error.response?.data?.message || 'Block failed', 'error');
+        } finally {
+            setActionLoading(false);
         }
     };
 
-    const handleDelete = async (productId) => {
-        if (!window.confirm('Are you sure you want to PERMANENTLY delete this product? This cannot be undone.')) return;
+    const handleUnblock = (productId) => {
+        setShowUnblockModal(productId);
+    };
+
+    const confirmUnblock = async () => {
+        if (!showUnblockModal) return;
         setActionLoading(true);
         try {
-            await api.delete(`/products/${productId}`);
+            await api.put(`/admin/product-reviews/${showUnblockModal}/unblock`, {});
+            showToast('Product unblocked successfully', 'success');
+            fetchProducts();
+            fetchStats();
+            setShowUnblockModal(null);
+            if (selectedProduct?._id === showUnblockModal) setSelectedProduct(null);
+        } catch (error) {
+            showToast(error.response?.data?.message || 'Unblock failed', 'error');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleDelete = (productId) => {
+        setShowDeleteModal(productId);
+    };
+
+    const confirmDelete = async () => {
+        if (!showDeleteModal) return;
+        setActionLoading(true);
+        try {
+            await api.delete(`/products/${showDeleteModal}`);
             showToast('Product deleted permanently', 'success');
             fetchProducts();
             fetchStats();
-            setSelectedProduct(null);
+            setShowDeleteModal(null);
+            if (selectedProduct?._id === showDeleteModal) setSelectedProduct(null);
         } catch (error) {
             showToast(error.response?.data?.message || 'Delete failed', 'error');
         } finally {
@@ -749,6 +802,15 @@ const ProductReviews = () => {
                                             Block Product
                                         </button>
                                     )}
+                                    {selectedProduct.listingStatus === 'BLOCKED' && (
+                                        <button
+                                            onClick={() => handleUnblock(selectedProduct._id)}
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/30 dark:hover:bg-green-900/50 dark:text-green-400 rounded-lg font-medium"
+                                        >
+                                            <CheckCircle className="h-5 w-5" />
+                                            Unblock Product
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => handleDelete(selectedProduct._id)}
                                         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 rounded-lg font-medium"
@@ -830,6 +892,124 @@ const ProductReviews = () => {
                                     {actionLoading ? 'Rejecting...' : 'Reject All'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Block Modal */}
+            {showBlockModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-3 mb-4 text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg w-fit">
+                            <Ban className="h-6 w-6" />
+                        </div>
+                        <h3 className="font-bold text-lg mb-2 text-slate-800 dark:text-white">Block Product?</h3>
+                        <p className="text-gray-500 dark:text-gray-400 mb-6">
+                            Are you sure you want to block this product permanently? This item will no longer be visible to customers.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowBlockModal(null)}
+                                className="px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-gray-300 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmBlock}
+                                disabled={actionLoading}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 transition-colors shadow-sm"
+                            >
+                                {actionLoading ? 'Blocking...' : 'Block Product'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showBulkApproveModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-3 mb-4 text-green-600 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg w-fit">
+                            <CheckCircle className="h-6 w-6" />
+                        </div>
+                        <h3 className="font-bold text-lg mb-2 text-slate-800 dark:text-white">Approve {selectedItems.length} Products?</h3>
+                        <p className="text-gray-500 dark:text-gray-400 mb-6">
+                            Are you sure you want to approve all {selectedItems.length} selected products? They will become live instantly.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowBulkApproveModal(false)}
+                                className="px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-gray-300 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmBulkApprove}
+                                disabled={actionLoading}
+                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 transition-colors shadow-sm"
+                            >
+                                {actionLoading ? 'Approving...' : 'Approve All'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Unblock Modal */}
+            {showUnblockModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-3 mb-4 text-green-600 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg w-fit">
+                            <CheckCircle className="h-6 w-6" />
+                        </div>
+                        <h3 className="font-bold text-lg mb-2 text-slate-800 dark:text-white">Unblock Product?</h3>
+                        <p className="text-gray-500 dark:text-gray-400 mb-6">
+                            Are you sure you want to unblock this product? It will become visible to customers again.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowUnblockModal(null)}
+                                className="px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-gray-300 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmUnblock}
+                                disabled={actionLoading}
+                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 transition-colors shadow-sm"
+                            >
+                                {actionLoading ? 'Unblocking...' : 'Unblock Product'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-3 mb-4 text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg w-fit">
+                            <Trash2 className="h-6 w-6" />
+                        </div>
+                        <h3 className="font-bold text-lg mb-2 text-slate-800 dark:text-white">Delete Product?</h3>
+                        <p className="text-gray-500 dark:text-gray-400 mb-6">
+                            Are you sure you want to <span className="font-bold text-red-600">PERMANENTLY DELETE</span> this product? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowDeleteModal(null)}
+                                className="px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-gray-300 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                disabled={actionLoading}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 transition-colors shadow-sm"
+                            >
+                                {actionLoading ? 'Deleting...' : 'Delete Permanently'}
+                            </button>
                         </div>
                     </div>
                 </div>

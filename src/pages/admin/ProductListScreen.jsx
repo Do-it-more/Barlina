@@ -24,12 +24,19 @@ const ProductListScreen = () => {
     const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('');
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [pages, setPages] = useState(1);
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
     const fetchProducts = async () => {
         try {
-            const { data } = await api.get('/products');
-            setProducts(data);
+            const { data } = await api.get(`/products?page=${page}`);
+            if (data.products) {
+                setProducts(data.products);
+                setPages(data.pages);
+            } else {
+                setProducts(data);
+            }
         } catch (error) {
             console.error("Failed to fetch products", error);
         } finally {
@@ -97,7 +104,7 @@ const ProductListScreen = () => {
         fetchProducts();
         fetchCategories();
         fetchSettings();
-    }, []);
+    }, [page]);
 
     const deleteHandler = async (id) => {
         const isConfirmed = await confirm('Delete Product', 'Are you sure you want to delete this product?');
@@ -212,6 +219,7 @@ const ProductListScreen = () => {
                                         )}
                                     </div>
                                 </th>
+                                <th className="p-4 font-semibold">Seller</th>
                                 <th
                                     className="p-4 font-semibold cursor-pointer hover:text-indigo-600 transition-colors select-none"
                                     onClick={() => handleSort('price')}
@@ -243,6 +251,22 @@ const ProductListScreen = () => {
                                         </div>
                                     </td>
                                     <td className="p-4 text-gray-600 dark:text-gray-400 capitalize">{product.category}</td>
+                                    <td className="p-4">
+                                        {product.ownerType === 'SELLER' && product.seller ? (
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                                                    {product.seller.businessName || product.seller.ownerName}
+                                                </span>
+                                                <span className="text-[10px] text-gray-500">
+                                                    ID: {product.seller.user?.toString().slice(-6).toUpperCase()}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-gray-300">
+                                                Platform
+                                            </span>
+                                        )}
+                                    </td>
                                     <td className="p-4 font-medium text-slate-900 dark:text-white">
                                         {product.discountPrice > 0 ? (
                                             <div className="flex flex-col">
@@ -342,7 +366,21 @@ const ProductListScreen = () => {
                         />
                         <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-slate-900 dark:text-white mb-1 truncate">{product.name}</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 capitalize">{product.category}</p>
+                            <div className="flex justify-between items-start">
+                                <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{product.category}</p>
+                                {product.ownerType === 'SELLER' && product.seller ? (
+                                    <div className="text-right">
+                                        <span className="block text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded">
+                                            {product.seller.businessName || product.seller.ownerName}
+                                        </span>
+                                        <span className="text-[9px] text-gray-500 mt-0.5 block">
+                                            ID: {product.seller.user?.toString().slice(-6).toUpperCase()}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <span className="text-[10px] font-medium text-gray-500 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">Platform</span>
+                                )}
+                            </div>
 
                             <div className="flex items-center justify-between mt-2">
                                 <div className="flex flex-col">
@@ -432,6 +470,29 @@ const ProductListScreen = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Pagination Controls */}
+            {pages > 1 && (
+                <div className="flex justify-center mt-6 gap-2">
+                    <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="px-4 py-2 border rounded-lg bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors text-slate-700 dark:text-slate-300"
+                    >
+                        <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <span className="flex items-center px-4 py-2 text-slate-600 dark:text-slate-400 font-medium">
+                        Page {page} of {pages}
+                    </span>
+                    <button
+                        onClick={() => setPage(p => Math.min(pages, p + 1))}
+                        disabled={page === pages}
+                        className="px-4 py-2 border rounded-lg bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors text-slate-700 dark:text-slate-300"
+                    >
+                        <ChevronRight className="h-5 w-5" />
+                    </button>
+                </div>
+            )}
         </div >
     );
 };

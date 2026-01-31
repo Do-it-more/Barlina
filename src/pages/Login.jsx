@@ -1,9 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GoogleLogin, useGoogleLogin } from '@react-oauth/google';
+import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Loader, Eye, EyeOff } from 'lucide-react';
+
+const GoogleSignInButton = () => {
+    const navigate = useNavigate();
+    const { googleLogin } = useAuth();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleGoogleSuccess = async (response) => {
+        try {
+            setLoading(true);
+            setError('');
+            // When using flow: 'auth-code', the code is in response.code
+            const data = await googleLogin(response.code);
+
+            // Check if phone verification is required
+            if (data.phoneVerificationRequired) {
+                navigate('/verify-phone');
+            } else {
+                navigate('/');
+            }
+        } catch (err) {
+            console.error("Google login error:", err);
+            setError(err.response?.data?.message || 'Google login failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleError = () => {
+        console.error('Google login failed');
+        setError('Google login failed');
+    };
+
+    const loginWithGoogle = useGoogleLogin({
+        onSuccess: handleGoogleSuccess,
+        onError: handleGoogleError,
+        flow: 'auth-code',
+        scope: 'email profile https://www.googleapis.com/auth/user.phonenumbers.read https://www.googleapis.com/auth/user.addresses.read'
+    });
+
+    return (
+        <div className="mt-4 flex flex-col items-center">
+            <button
+                type="button"
+                onClick={() => loginWithGoogle()}
+                disabled={loading}
+                className="flex items-center justify-center w-full max-w-xs py-3 px-4 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all gap-3 group disabled:opacity-70"
+            >
+                {loading ? (
+                    <Loader className="animate-spin h-5 w-5 text-indigo-600" />
+                ) : (
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                )}
+                <span className="font-medium text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white">
+                    {loading ? 'Signing in...' : 'Sign in with Google'}
+                </span>
+            </button>
+            {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
+        </div>
+    );
+};
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -16,7 +77,7 @@ const Login = () => {
 
     const [resendTimer, setResendTimer] = useState(30);
 
-    const { login, verifyTwoFactorLogin, googleLogin, resendTwoFactorLogin } = useAuth();
+    const { login, verifyTwoFactorLogin, resendTwoFactorLogin } = useAuth();
     const navigate = useNavigate();
 
     // Timer Effect
@@ -44,44 +105,6 @@ const Login = () => {
             setLoading(false);
         }
     };
-
-    const handleGoogleSuccess = async (response) => {
-        try {
-            setLoading(true);
-            setError('');
-            // When using flow: 'auth-code', the code is in response.code
-            const data = await googleLogin(response.code);
-
-            // Check if phone verification is required
-            if (data.phoneVerificationRequired) {
-                navigate('/verify-phone');
-            } else {
-                navigate('/');
-            }
-        } catch (err) {
-            setError(err.response?.data?.message || 'Google login failed');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleGoogleError = () => {
-        setError('Google login failed');
-    };
-
-    // Custom Google Login Hook (Must be at the top level)
-    const loginWithGoogle = useGoogleLogin({
-        onSuccess: async (response) => {
-            try {
-                handleGoogleSuccess(response);
-            } catch (err) {
-                handleGoogleError(err);
-            }
-        },
-        onError: handleGoogleError,
-        flow: 'auth-code',
-        scope: 'email profile https://www.googleapis.com/auth/user.phonenumbers.read https://www.googleapis.com/auth/user.addresses.read'
-    });
 
     const handleSubmit = async (e) => {
 
@@ -230,18 +253,7 @@ const Login = () => {
                     </div>
 
                     {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
-                        <div className="mt-4 flex justify-center">
-                            <button
-                                type="button"
-                                onClick={() => loginWithGoogle()}
-                                className="flex items-center justify-center w-full max-w-xs py-3 px-4 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all gap-3 group"
-                            >
-                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-                                <span className="font-medium text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white">
-                                    Sign in with Google
-                                </span>
-                            </button>
-                        </div>
+                        <GoogleSignInButton />
                     ) : (
                         <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm border border-yellow-200 dark:border-yellow-800 text-center">
                             Google Sign-In is not configured. Please set VITE_GOOGLE_CLIENT_ID in your .env file.

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import api from '../services/api';
@@ -20,9 +20,10 @@ const OrderDetail = () => {
     const [returnEligibility, setReturnEligibility] = useState({}); // Map of itemId -> eligibility object
     // Return Modal State
     const [showReturnModal, setShowReturnModal] = useState(false);
-    const [selectedReturnItem, setSelectedReturnItem] = useState(null);
-    const [returnReason, setReturnReason] = useState('DAMAGED'); // Default enum
     const [returnComments, setReturnComments] = useState('');
+    const [searchParams] = useSearchParams();
+    const isInvoiceMode = searchParams.get('mode') === 'invoice';
+    const hasPrinted = useRef(false);
 
     const fetchOrderData = async () => {
         try {
@@ -32,6 +33,9 @@ const OrderDetail = () => {
             ]);
 
             setOrder(orderRes.data);
+
+            // ... (rest of function)
+
 
             // Map eligibility array to object for easier lookup by itemId
             const eligibilityMap = {};
@@ -55,8 +59,33 @@ const OrderDetail = () => {
     }, [id]);
 
     const handlePrint = () => {
+        const originalTitle = document.title;
+        document.title = `Invoice-${order.invoiceNumber || order._id}`;
         window.print();
+        document.title = originalTitle;
     };
+
+    // Notify parent when ready to print
+    useEffect(() => {
+        let timeoutId;
+        if (!loading && order && isInvoiceMode && !hasPrinted.current) {
+            hasPrinted.current = true;
+            // Small delay to ensure images/barcode render
+            timeoutId = setTimeout(() => {
+                if (window.self !== window.top) {
+                    window.parent.postMessage('READY_TO_PRINT', '*');
+                } else {
+                    handlePrint();
+                }
+            }, 100);
+        }
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+        };
+    }, [loading, order, isInvoiceMode]);
+
+
+
 
     const handleCancelOrder = async () => {
         const isConfirmed = await confirm('Cancel Order', 'Are you sure you want to cancel this order? This action cannot be undone.');
@@ -357,20 +386,23 @@ const OrderDetail = () => {
         });
     }
 
+
+
     return (
-        <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+        <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isInvoiceMode ? 'bg-white' : 'bg-gray-50 dark:bg-slate-900'}`}>
             <style>{`
                 @media print {
                     .page-break { page-break-after: always; break-after: page; }
+                    body { background-color: white !important; }
                 }
             `}</style>
-            <div className="print:hidden">
+            <div className={isInvoiceMode ? 'hidden' : 'print:hidden'}>
                 <Navbar />
             </div>
 
-            <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full print:p-0 print:max-w-none">
-                {/* Print Header */}
-                <div className="hidden print:block mb-8 border-b pb-4">
+            <main className={`w-full ${isInvoiceMode ? 'max-w-4xl mx-auto px-4 py-8' : 'flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 print:p-0 print:max-w-none'}`}>
+                {/* Invoice Header - Shown in Print OR Invoice Mode */}
+                <div className={`${isInvoiceMode ? 'block' : 'hidden print:block'} mb-8 border-b pb-4`}>
                     <h1 className="text-4xl font-bold text-slate-900 mb-2">INVOICE</h1>
                     <div className="flex justify-between items-end">
                         <div>
@@ -401,11 +433,17 @@ const OrderDetail = () => {
                     </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 print:hidden gap-4">
+                <div className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 ${isInvoiceMode ? 'hidden' : 'print:hidden'}`}>
                     <div className="w-full md:w-auto">
-                        <Link to="/orders" className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium mb-3">
-                            <ArrowLeft className="h-4 w-4" /> Back to Orders
-                        </Link>
+                        {['admin', 'super_admin'].includes(user?.role) ? (
+                            <Link to={`/admin/orders/${id}`} className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors font-bold mb-3">
+                                <ArrowLeft className="h-4 w-4" /> Back to Admin Portal
+                            </Link>
+                        ) : (
+                            <Link to="/orders" className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium mb-3">
+                                <ArrowLeft className="h-4 w-4" /> Back to Orders
+                            </Link>
+                        )}
                         {order.invoiceNumber && (
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <FileText className="h-6 w-6 text-indigo-500" />
@@ -441,7 +479,7 @@ const OrderDetail = () => {
                 </div>
 
                 {/* Admin Delivery Date Control */}
-                {(['admin', 'super_admin'].includes(user?.role)) && !order.isDelivered && !order.isCancelled && (
+                {(['admin', 'super_admin'].includes(user?.role)) && !order.isDelivered && !order.isCancelled && !isInvoiceMode && (
                     <div className="mb-6 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-orange-200 dark:border-orange-900/30 print:hidden">
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                             <Truck className="h-5 w-5 text-orange-500" /> Admin Delivery Control
@@ -494,11 +532,11 @@ const OrderDetail = () => {
                     )
                 }
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:flex print:flex-col">
+                <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8 ${isInvoiceMode ? 'flex flex-col' : 'print:flex print:flex-col'}`}>
                     {/* Main Content */}
-                    <div className="lg:col-span-2 space-y-6 print:space-y-4 print:order-2">
-                        {/* Status Tracker - Hide in Print */}
-                        {!order.isCancelled && (
+                    <div className={`lg:col-span-2 space-y-6 ${isInvoiceMode ? 'space-y-4 order-2' : 'print:space-y-4 print:order-2'}`}>
+                        {/* Status Tracker - Hide in Print or Invoice Mode */}
+                        {!order.isCancelled && !isInvoiceMode && (
                             <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 print:hidden">
                                 <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-8">Order Status</h2>
                                 <div className="relative">
@@ -557,7 +595,7 @@ const OrderDetail = () => {
                         )}
 
                         {/* Expected Delivery */}
-                        {!order.isDelivered && !order.isCancelled && order.expectedDeliveryDate && (
+                        {!order.isDelivered && !order.isCancelled && order.expectedDeliveryDate && !isInvoiceMode && (
                             <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/20 flex items-center justify-between mb-0 mt-6 print:hidden">
                                 <div className="flex items-center gap-3">
                                     <div className="bg-white dark:bg-slate-800 p-2 rounded-lg text-indigo-600 dark:text-indigo-400">
@@ -574,8 +612,8 @@ const OrderDetail = () => {
                         )}
 
                         {/* Items */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 print:shadow-none print:border print:border-gray-200 print:mb-6">
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 print:text-xl print:border-b print:pb-2">Items Purchased</h2>
+                        <div className={`p-6 rounded-2xl shadow-sm border ${isInvoiceMode ? 'bg-white border-gray-300' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 print:shadow-none print:border print:border-gray-200 print:mb-6'}`}>
+                            <h2 className={`text-lg font-bold mb-6 ${isInvoiceMode ? 'text-slate-900 text-xl border-b border-gray-200 pb-2' : 'text-slate-900 dark:text-white print:text-xl print:border-b print:pb-2'}`}>Items Purchased</h2>
                             <div className="space-y-4">
                                 {order.orderItems.map((item, index) => {
                                     const eligibility = returnEligibility[item._id];
@@ -601,7 +639,21 @@ const OrderDetail = () => {
                                                             {item.name} (Unavailable)
                                                         </span>
                                                     )}
-                                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Qty: {item.qty} × ₹{item.price}</p>
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Qty: {item.qty} × ₹{item.price}</p>
+                                                    {/* Hide Sold By for Customers - Show only for Admin/SuperAdmin */}
+                                                    {['admin', 'super_admin'].includes(user?.role) && (
+                                                        <>
+                                                            {item.product && item.product.ownerType === 'SELLER' && item.product.seller && (
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                                    Sold By: {item.product.seller.businessName || item.product.seller.ownerName}
+                                                                    <span className="ml-1 text-[10px] text-gray-400">(ID: {item.product.seller._id.toString().slice(-6).toUpperCase()})</span>
+                                                                </p>
+                                                            )}
+                                                            {(!item.product || item.product.ownerType !== 'SELLER') && (
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400">Sold By: Platform</p>
+                                                            )}
+                                                        </>
+                                                    )}
 
                                                     {/* Return Status Badge (Left Aligned) */}
                                                     {returnStatus !== 'NONE' && (
@@ -619,12 +671,12 @@ const OrderDetail = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 print:hidden">
+                                            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
                                                 <p className="font-bold text-slate-900 dark:text-white">₹{(item.qty * item.price).toFixed(2)}</p>
 
 
                                                 {/* Return Actions */}
-                                                {!order.isCancelled && order.isDelivered && (
+                                                {!order.isCancelled && order.isDelivered && !isInvoiceMode && (
                                                     <div className="mt-1 flex flex-col items-end gap-2">
                                                         {returnStatus !== 'NONE' ? (
                                                             <>
@@ -663,7 +715,7 @@ const OrderDetail = () => {
                                                 )}
 
                                                 {/* Review Action */}
-                                                {item.product && (!['admin', 'super_admin'].includes(user?.role)) && !order.isCancelled && order.isDelivered && (
+                                                {item.product && (!['admin', 'super_admin'].includes(user?.role)) && !order.isCancelled && order.isDelivered && !isInvoiceMode && (
                                                     <button
                                                         onClick={() => openReviewModal(item)}
                                                         className="text-xs font-medium text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg transition-colors border border-amber-100 dark:border-amber-900/30"
@@ -680,10 +732,10 @@ const OrderDetail = () => {
                     </div>
 
                     {/* Sidebar */}
-                    <div className="space-y-6 print:grid print:grid-cols-2 print:gap-8 print:space-y-0 print:order-1 page-break">
+                    <div className={`space-y-6 ${isInvoiceMode ? 'grid grid-cols-2 gap-8 space-y-0 order-1 page-break' : 'print:grid print:grid-cols-2 print:gap-8 print:space-y-0 print:order-1 page-break'}`}>
                         {/* Shipping Info */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 print:shadow-none print:border print:border-gray-200">
-                            <h3 className="font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2 print:text-lg">
+                        <div className={`p-6 rounded-2xl shadow-sm border ${isInvoiceMode ? 'bg-white border-gray-300' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 print:shadow-none print:border print:border-gray-200'}`}>
+                            <h3 className={`font-bold mb-4 flex items-center gap-2 ${isInvoiceMode ? 'text-slate-900 text-lg' : 'text-slate-900 dark:text-white print:text-lg'}`}>
                                 <MapPin className="h-4 w-4 text-indigo-500" /> Shipping Address
                             </h3>
                             <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1 print:text-base">
@@ -696,11 +748,11 @@ const OrderDetail = () => {
                         </div>
 
                         {/* Payment Info */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 print:shadow-none print:border print:border-gray-200">
-                            <h3 className="font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2 print:text-lg">
+                        <div className={`p-6 rounded-2xl shadow-sm border ${isInvoiceMode ? 'bg-white border-gray-300' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 print:shadow-none print:border print:border-gray-200'}`}>
+                            <h3 className={`font-bold mb-4 flex items-center gap-2 ${isInvoiceMode ? 'text-slate-900 text-lg' : 'text-slate-900 dark:text-white print:text-lg'}`}>
                                 <CreditCard className="h-4 w-4 text-indigo-500" /> Payment Summary
                             </h3>
-                            <div className="space-y-2 text-sm print:text-base">
+                            <div className={`space-y-2 text-sm ${isInvoiceMode ? 'text-base' : 'print:text-base'}`}>
                                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
                                     <span>Items Total</span>
                                     <span>₹{order.itemsPrice?.toFixed(2) || (order.totalPrice - (order.taxPrice || 0) - (order.shippingPrice || 0)).toFixed(2)}</span>
@@ -730,14 +782,14 @@ const OrderDetail = () => {
                         </div>
 
                         {/* Gratitude Quote */}
-                        <div className="hidden print:block col-span-2 mt-8 text-center border-t border-gray-200 pt-6">
+                        <div className={`${isInvoiceMode ? 'block' : 'hidden print:block'} col-span-2 mt-8 text-center border-t border-gray-200 pt-6`}>
                             <p className="font-serif italic text-lg text-slate-600">"Thank you for shopping with us! We hope you love your purchase."</p>
                         </div>
                     </div>
                 </div>
             </main >
 
-            <div className="print:hidden">
+            <div className={isInvoiceMode ? 'hidden' : 'print:hidden'}>
                 <Footer />
             </div>
 

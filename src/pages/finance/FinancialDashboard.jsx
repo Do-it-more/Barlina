@@ -52,8 +52,20 @@ const FinancialDashboard = () => {
         try {
             // Get current month stats
             const today = new Date();
-            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-            const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+
+            // Helper to format as YYYY-MM-DD in Local Time
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            const startOfMonthDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endOfMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            const startOfMonth = formatDate(startOfMonthDate);
+            const endOfMonth = formatDate(endOfMonthDate);
 
             const [statsRes, recordsRes] = await Promise.all([
                 api.get(`/finance/stats?startDate=${startOfMonth}&endDate=${endOfMonth}`),

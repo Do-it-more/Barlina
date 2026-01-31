@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Search, Plus, X, User, Users, ArrowLeft, Check, Trash2, MoreVertical, AlertTriangle } from 'lucide-react';
 import { useAdminChat } from '../../../context/AdminChatContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -35,14 +36,31 @@ const ChatSidebar = () => {
         chat.chatName.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const location = useLocation();
+
     // Fetch Admins for Picker
     useEffect(() => {
         if (isPickerOpen && (pickerMode === 'private' || pickerMode === 'group')) {
             const fetchAdmins = async () => {
                 try {
                     const { data } = await api.get('/users');
+
+                    // Determine allowed roles based on context (URL)
+                    let allowedRoles = ['admin', 'super_admin', 'finance', 'seller_admin'];
+
+                    // RESTRICTION 1: Seller Hub (Super Admin Management View)
+                    // Admins want to chat with Sellers and other Admins (excluding Finance)
+                    if (location.pathname.startsWith('/seller-management')) {
+                        allowedRoles = ['admin', 'super_admin', 'seller_admin', 'seller'];
+                    }
+                    // RESTRICTION 2: Seller Portal (Seller View)
+                    // Sellers want to chat with Admins (excluding Finance and other Sellers)
+                    else if (location.pathname.startsWith('/seller')) {
+                        allowedRoles = ['admin', 'super_admin', 'seller_admin'];
+                    }
+
                     const admins = data.filter(u =>
-                        ['admin', 'super_admin', 'finance', 'seller_admin'].includes(u.role) &&
+                        allowedRoles.includes(u.role) &&
                         u._id !== currentUser._id
                     );
                     setAvailableUsers(admins);
@@ -52,7 +70,7 @@ const ChatSidebar = () => {
             };
             fetchAdmins();
         }
-    }, [isPickerOpen, pickerMode, currentUser._id]);
+    }, [isPickerOpen, pickerMode, currentUser._id, location.pathname]);
 
     // Reset state when picker closes
     useEffect(() => {

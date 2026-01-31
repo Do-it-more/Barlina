@@ -22,15 +22,25 @@ const ProductList = () => {
     const [onlyInStock, setOnlyInStock] = useState(false);
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [pageNumber, setPageNumber] = useState(1);
+    const [pages, setPages] = useState(1);
 
     useEffect(() => {
         const fetchProducts = async () => {
+            setLoading(true);
             try {
-                // Pass keyword to backend
-                const { data } = await api.get(`/products?keyword=${keyword}`);
-                setProducts(data);
-                // We re-apply filtering logic client-side as well for price/category on top of the search result
-                setFilteredProducts(data);
+                const { data } = await api.get(`/products?keyword=${keyword}&page=${pageNumber}`);
+
+                let fetchedProducts = [];
+                if (Array.isArray(data)) {
+                    fetchedProducts = data;
+                } else if (data.products) {
+                    fetchedProducts = data.products;
+                    setPages(data.pages);
+                }
+
+                setProducts(fetchedProducts);
+                setFilteredProducts(fetchedProducts);
             } catch (error) {
                 console.error("Failed to fetch products", error);
             } finally {
@@ -38,7 +48,7 @@ const ProductList = () => {
             }
         };
         fetchProducts();
-    }, [keyword]); // Re-fetch when keyword changes
+    }, [keyword, pageNumber]);
 
     // Update selected categories when URL param or query param changes
     useEffect(() => {
@@ -271,6 +281,35 @@ const ProductList = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* Pagination Controls */}
+                    {pages > 1 && (
+                        <div className="flex justify-center mt-12 gap-2">
+                            <button
+                                onClick={() => {
+                                    setPageNumber(p => Math.max(1, p - 1));
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                                disabled={pageNumber === 1}
+                                className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                Previous
+                            </button>
+                            <span className="flex items-center px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">
+                                Page {pageNumber} of {pages}
+                            </span>
+                            <button
+                                onClick={() => {
+                                    setPageNumber(p => Math.min(pages, p + 1));
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                                disabled={pageNumber === pages}
+                                className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </div>
             </main>
 

@@ -10,6 +10,7 @@ import { useWishlist } from '../context/WishlistContext';
 import WishlistButton from '../components/WishlistButton';
 import { useToast } from '../context/ToastContext';
 import { Star, ShoppingCart, ShoppingBag, Minus, Plus, Heart, Truck, ShieldCheck, ArrowLeft, ArrowRight, Loader, Banknote, MapPin, AlertCircle, RotateCcw, Tag, Flame } from 'lucide-react';
+import RecentlyViewed from '../components/product/RecentlyViewed';
 
 const ProductDetail = () => {
     const { id } = useParams();
@@ -113,8 +114,12 @@ const ProductDetail = () => {
                 setLoading(false);
             }
         };
+        if (user && id) {
+            // Track recently viewed without blocking
+            api.post('/users/recently-viewed', { productId: id }).catch(err => console.error("Failed to track view", err));
+        }
         fetchProduct();
-    }, [id]);
+    }, [id, user]);
 
     // Use real product images array if available, otherwise fallback to main image
     const images = useMemo(() => {
@@ -602,6 +607,10 @@ const ProductDetail = () => {
                     </div>
                 </div>
             </section>
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
+                {user && <RecentlyViewed />}
+            </div>
 
 
 

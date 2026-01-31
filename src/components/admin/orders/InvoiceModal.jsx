@@ -30,12 +30,14 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                     </h2>
                     <div className="flex gap-2">
                         <button
+                            type="button"
                             onClick={handlePrint}
                             className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
                         >
                             <Printer className="h-4 w-4" /> Print Invoice
                         </button>
                         <button
+                            type="button"
                             onClick={onClose}
                             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                         >
@@ -50,7 +52,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                     {/* INVOICE PAPER DESIGN */}
                     <div
                         ref={printRef}
-                        className="bg-white text-slate-800 mx-auto max-w-[210mm] min-h-[297mm] p-[10mm] shadow-lg print:shadow-none print:m-0 flex flex-col"
+                        className="bg-white text-slate-800 mx-auto max-w-[210mm] min-h-[297mm] p-[10mm] shadow-lg print:shadow-none print:m-0"
                         style={{ fontFamily: "'Inter', sans-serif" }}
                     >
                         {/* Header Title */}
@@ -159,8 +161,41 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                             </div>
                         </div>
 
+                        {/* Items Purchased List */}
+                        <div className="mb-12" style={{ pageBreakBefore: 'always', breakBefore: 'page' }}>
+                            <h3 className="text-slate-400 font-bold mb-4 text-sm uppercase tracking-wider pt-8">Items Purchased</h3>
+                            <div className="border border-gray-200 rounded-xl overflow-hidden">
+                                {order.orderItems.map((item, index) => (
+                                    <div key={index} className="flex gap-4 p-4 border-b last:border-0 border-gray-100 items-center">
+                                        <div className="w-16 h-16 rounded-lg bg-gray-50 shrink-0 overflow-hidden border border-gray-100">
+                                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="font-bold text-slate-800 text-sm">{item.name}</p>
+                                            <p className="text-xs text-slate-500 mt-0.5">Qty: {item.qty} × ₹{item.price}</p>
+
+                                            {/* Sold By Info */}
+                                            <div className="mt-1">
+                                                {item.product && item.product.ownerType === 'SELLER' && item.product.seller ? (
+                                                    <p className="text-[10px] text-gray-500">
+                                                        Sold By: <span className="font-medium text-slate-700">{item.product.seller.businessName || item.product.seller.ownerName}</span>
+                                                        <span className="ml-1 text-gray-400">(ID: {item.product.seller._id.toString().slice(-6).toUpperCase()})</span>
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-[10px] text-gray-500">Sold By: Platform</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-slate-800">₹{(item.qty * item.price).toFixed(2)}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                         {/* Footer Quote */}
-                        <div className="mt-auto pt-8 border-t border-gray-100 text-center">
+                        <div className="pt-8 border-t border-gray-100 text-center">
                             <p className="text-slate-500 italic font-serif">"Thank you for shopping with us! We hope you love your purchase."</p>
                         </div>
                     </div>

@@ -25,14 +25,15 @@ const AdminActivityLogScreen = () => {
     const [pages, setPages] = useState(1);
     const [keyword, setKeyword] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState('all'); // 'all', 'auth', 'work'
+    const [activeTab, setActiveTab] = useState('all'); // 'all', 'super_admin', 'admin', 'finance'
+    const [activeType, setActiveType] = useState('all'); // 'all', 'auth', 'work'
     const { showToast } = useToast();
     const { confirm } = useConfirm();
 
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get(`/admin/management/activity-logs?pageNumber=${page}&keyword=${keyword}&type=${activeTab}`);
+            const { data } = await api.get(`/admin/management/activity-logs?pageNumber=${page}&keyword=${keyword}&role=${activeTab}&type=${activeType}`);
             setLogs(data.logs);
             setPages(data.pages);
         } catch (error) {
@@ -45,7 +46,7 @@ const AdminActivityLogScreen = () => {
 
     useEffect(() => {
         fetchLogs();
-    }, [page, keyword, activeTab]);
+    }, [page, keyword, activeTab, activeType]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -134,29 +135,45 @@ const AdminActivityLogScreen = () => {
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex items-center gap-2">
-                <button
-                    onClick={() => { setActiveTab('all'); setPage(1); }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+            {/* Role Tabs */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
+                    <button
+                        onClick={() => { setActiveTab('all'); setPage(1); }}
+                        className={`whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                    >
+                        All Roles
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('super_admin'); setPage(1); }}
+                        className={`whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'super_admin' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                    >
+                        Super Admin
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('admin'); setPage(1); }}
+                        className={`whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'admin' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                    >
+                        Admin
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('finance'); setPage(1); }}
+                        className={`whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'finance' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                    >
+                        Finance
+                    </button>
+                </div>
+
+                {/* Type Filter Dropdown */}
+                <select
+                    value={activeType}
+                    onChange={(e) => { setActiveType(e.target.value); setPage(1); }}
+                    className="px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                 >
-                    <List className="h-4 w-4" />
-                    All Logs
-                </button>
-                <button
-                    onClick={() => { setActiveTab('auth'); setPage(1); }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'auth' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
-                >
-                    <Shield className="h-4 w-4" />
-                    Login/Logout
-                </button>
-                <button
-                    onClick={() => { setActiveTab('work'); setPage(1); }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'work' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
-                >
-                    <Briefcase className="h-4 w-4" />
-                    Work Activity
-                </button>
+                    <option value="all">All Activity Types</option>
+                    <option value="auth">Login / Logout</option>
+                    <option value="work">Work Activity</option>
+                </select>
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">

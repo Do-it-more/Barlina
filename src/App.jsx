@@ -136,6 +136,7 @@ function ConditionalMobileNav() {
 }
 
 import { SettingsProvider } from './context/SettingsContext';
+import { AdminChatProvider } from './context/AdminChatContext'; // Import AdminChatProvider
 
 // ... (other imports)
 
@@ -156,24 +157,25 @@ function App() {
               <CartProvider>
                 <WishlistProvider>
                   <Router>
-                    <SessionTracker />
-                    <ScrollToTop />
-                    <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/register" element={<Register />} />
-                      <Route path="/forgot-password" element={<ForgotPassword />} />
-                      <Route path="/verify-phone" element={<PhoneVerification />} />
-                      <Route path="/contact" element={<Contact />} />
+                    <AdminChatProvider>
+                      <SessionTracker />
+                      <ScrollToTop />
+                      <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/verify-phone" element={<PhoneVerification />} />
+                        <Route path="/contact" element={<Contact />} />
 
-                      {/* Public Shop Routes */}
-
-
-
+                        {/* Public Shop Routes */}
 
 
-                      <Route path="/about" element={<About />} />
-                      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+
+
+
+                        <Route path="/about" element={<About />} />
+                        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
 
 
 
@@ -182,154 +184,160 @@ function App() {
 
                       // ... existing code ...
 
-                      <Route path="/about" element={<About />} />
-                      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                      <Route path="/terms-conditions" element={<TermsConditions />} />
-                      <Route path="/returns" element={<Refunds />} />
-                      <Route path="/shipping-policy" element={<ShippingPolicy />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                        <Route path="/terms-conditions" element={<TermsConditions />} />
+                        <Route path="/returns" element={<Refunds />} />
+                        <Route path="/shipping-policy" element={<ShippingPolicy />} />
 
 
-                      {/* Protected Routes */}
-                      <Route element={<ProtectedRoute />}>
-                        <Route path="/products" element={<ProductList />} />
-                        <Route path="/category/:category" element={<ProductList />} />
-                        <Route path="/product/:id" element={<ProductDetail />} />
-                        <Route path="/cart" element={<Cart />} />
-                        <Route path="/wishlist" element={<Wishlist />} />
-                        <Route path="/checkout" element={<Checkout />} />
-                        <Route path="/orders" element={<OrderList />} />
-                        <Route path="/order-confirmation" element={<OrderConfirmation />} />
-                        <Route path="/order/:id" element={<OrderDetail />} />
-                        <Route path="/profile" element={<Profile />} />
-                      </Route>
-                      {/* Admin Routes */}
-                      <Route element={<ProtectedRoute adminOnly={true} />}>
-                        <Route path="/admin" element={
-                          <React.Suspense fallback={
-                            <div className="flex h-screen items-center justify-center">
-                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                            </div>
-                          }>
-                            <AdminLayout />
-                          </React.Suspense>
-                        }>
-                          <Route index element={<AdminDashboard />} />
-                          <Route path="dashboard" element={<AdminDashboard />} />
-                          <Route path="products" element={<ProductListScreen />} />
-                          <Route path="products/create" element={<ProductEditScreen />} />
-                          <Route path="products/:id/edit" element={<ProductEditScreen />} />
-                          <Route path="orders" element={<OrderListScreen />} />
-                          <Route path="orders/:id" element={<OrderDetailScreen />} />
-                          <Route path="users" element={<UserListScreen />} />
-                          <Route path="users/:id" element={<UserDetailScreen />} />
-                          <Route path="users/create" element={<AdminCreateScreen />} />
-                          <Route path="categories" element={<CategoryListScreen />} />
-                          <Route path="categories/create" element={<CategoryEditScreen />} />
-                          <Route path="categories/:id/edit" element={<CategoryEditScreen />} />
-                          <Route path="complaints" element={<ComplaintListScreen />} />
-                          <Route path="complaints/:id" element={<ComplaintDetailScreen />} />
-                          <Route path="contacts" element={<ContactListScreen />} />
-                          <Route path="returns" element={<ReturnListScreen />} />
-                          <Route path="coupons" element={<CouponListScreen />} />
-                          <Route path="settings" element={<SettingsScreen />} />
-
-                          <Route path="management/permissions" element={<PermissionScreen />} />
-                          <Route path="management/approvals" element={<ApprovalScreen />} />
-                          <Route path="management/activity" element={<AdminActivityLogScreen />} />
-                          <Route path="team-chat" element={<TeamChatScreen />} />
-
-                          {/* Seller Management Routes */}
-                          <Route path="sellers" element={<SellerListScreen />} />
-                          <Route path="sellers/:id" element={<SellerDetailScreen />} />
-
-                          {/* Product Review Routes */}
-                          <Route path="product-reviews" element={<ProductReviewScreen />} />
+                        {/* Protected Routes */}
+                        <Route element={<ProtectedRoute />}>
+                          <Route path="/products" element={<ProductList />} />
+                          <Route path="/category/:category" element={<ProductList />} />
+                          <Route path="/product/:id" element={<ProductDetail />} />
+                          <Route path="/cart" element={<Cart />} />
+                          <Route path="/wishlist" element={<Wishlist />} />
+                          <Route path="/checkout" element={<Checkout />} />
+                          <Route path="/orders" element={<OrderList />} />
+                          <Route path="/order-confirmation" element={<OrderConfirmation />} />
+                          <Route path="/order/:id" element={<OrderDetail />} />
+                          <Route path="/profile" element={<Profile />} />
                         </Route>
-                        <Route path="/admin/change-password" element={
-                          <React.Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
-                            <AdminChangePassword />
-                          </React.Suspense>
-                        } />
-                      </Route>
+                        {/* Admin Routes */}
+                        <Route element={<ProtectedRoute adminOnly={true} />}>
+                          <Route path="/admin" element={
+                            <React.Suspense fallback={
+                              <div className="flex h-screen items-center justify-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                              </div>
+                            }>
+                              <AdminLayout />
+                            </React.Suspense>
+                          }>
+                            <Route index element={<AdminDashboard />} />
+                            <Route path="dashboard" element={<AdminDashboard />} />
+                            <Route path="products" element={<ProductListScreen />} />
+                            <Route path="products/create" element={<ProductEditScreen />} />
+                            <Route path="products/:id/edit" element={<ProductEditScreen />} />
+                            <Route path="orders" element={<OrderListScreen />} />
+                            <Route path="orders/:id" element={<OrderDetailScreen />} />
+                            <Route path="users" element={<UserListScreen />} />
+                            <Route path="users/:id" element={<UserDetailScreen />} />
+                            <Route path="users/create" element={<AdminCreateScreen />} />
+                            <Route path="categories" element={<CategoryListScreen />} />
+                            <Route path="categories/create" element={<CategoryEditScreen />} />
+                            <Route path="categories/:id/edit" element={<CategoryEditScreen />} />
+                            <Route path="complaints" element={<ComplaintListScreen />} />
+                            <Route path="complaints/:id" element={<ComplaintDetailScreen />} />
+                            <Route path="contacts" element={<ContactListScreen />} />
+                            <Route path="returns" element={<ReturnListScreen />} />
+                            <Route path="coupons" element={<CouponListScreen />} />
+                            <Route path="settings" element={<SettingsScreen />} />
 
-                      {/* Seller Routes */}
-                      <Route path="/seller/register" element={
-                        <ProtectedRoute>
-                          <SellerOnboarding />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/seller/onboarding" element={
-                        <ProtectedRoute>
-                          <SellerOnboarding />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/seller" element={
-                        <ProtectedRoute>
-                          <SellerLayout />
-                        </ProtectedRoute>
-                      }>
-                        <Route index element={<SellerDashboard />} />
-                        <Route path="dashboard" element={<SellerDashboard />} />
-                        <Route path="products" element={<SellerProducts />} />
-                        <Route path="products/add" element={<SellerAddProduct />} />
-                        <Route path="products/:id/edit" element={<SellerAddProduct />} />
-                        <Route path="orders" element={<SellerOrders />} />
-                      </Route>
+                            <Route path="management/permissions" element={<PermissionScreen />} />
+                            <Route path="management/approvals" element={<ApprovalScreen />} />
+                            <Route path="management/activity" element={<AdminActivityLogScreen />} />
+                            <Route path="team-chat" element={<TeamChatScreen />} />
 
-                      {/* Finance Routes */}
-                      <Route path="/finance" element={
-                        <ProtectedRoute>
-                          <FinanceLayout />
-                        </ProtectedRoute>
-                      }>
-                        <Route index element={<FinancialDashboard />} />
-                        <Route path="dashboard" element={<FinancialDashboard />} />
-                        <Route path="reports" element={<LedgerReports />} />
-                        <Route path="stats" element={<FinanceAnalytics />} />
-                        <Route path="settings" element={<FinanceSettings />} />
-                        <Route path="team-chat" element={
-                          <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
-                            <TeamChatScreen />
-                          </React.Suspense>
-                        } />
-                        <Route path="change-password" element={
-                          <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
-                            <AdminChangePassword />
-                          </React.Suspense>
-                        } />
-                      </Route>
+                            {/* Seller Management Routes */}
+                            <Route path="sellers" element={<SellerListScreen />} />
+                            <Route path="sellers/:id" element={<SellerDetailScreen />} />
 
-                      {/* Seller Management Routes (Super Admin) */}
-                      <Route path="/seller-management" element={
-                        <ProtectedRoute>
-                          <SellerManagementLayout />
-                        </ProtectedRoute>
-                      }>
-                        <Route index element={<SellerManagementDashboard />} />
-                        <Route path="dashboard" element={<SellerManagementDashboard />} />
-                        <Route path="sellers" element={<SellerApprovals />} />
-                        <Route path="sellers/:id" element={<SellerDetail />} />
-                        <Route path="product-reviews" element={<ProductReviews />} />
-                        <Route path="active-sellers" element={<ActiveSellers />} />
-                        <Route path="all-products" element={<ProductReviews />} />
-                        <Route path="audit-logs" element={<AuditLogs />} />
-                        <Route path="team-chat" element={
-                          <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
-                            <TeamChatScreen />
-                          </React.Suspense>
-                        } />
-                        <Route path="change-password" element={
-                          <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
-                            <AdminChangePassword />
-                          </React.Suspense>
-                        } />
-                      </Route>
+                            {/* Product Review Routes */}
+                            <Route path="product-reviews" element={<ProductReviewScreen />} />
+                          </Route>
+                          <Route path="/admin/change-password" element={
+                            <React.Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
+                              <AdminChangePassword />
+                            </React.Suspense>
+                          } />
+                        </Route>
 
-                      {/* Catch All - 404 */}
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                    <ConditionalChatBot />
-                    <ConditionalMobileNav />
+                        {/* Seller Routes */}
+                        <Route path="/seller/register" element={
+                          <ProtectedRoute>
+                            <SellerOnboarding />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/seller/onboarding" element={
+                          <ProtectedRoute>
+                            <SellerOnboarding />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/seller" element={
+                          <ProtectedRoute>
+                            <SellerLayout />
+                          </ProtectedRoute>
+                        }>
+                          <Route index element={<SellerDashboard />} />
+                          <Route path="dashboard" element={<SellerDashboard />} />
+                          <Route path="products" element={<SellerProducts />} />
+                          <Route path="products/add" element={<SellerAddProduct />} />
+                          <Route path="products/:id/edit" element={<SellerAddProduct />} />
+                          <Route path="orders" element={<SellerOrders />} />
+                          <Route path="team-chat" element={
+                            <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
+                              <TeamChatScreen />
+                            </React.Suspense>
+                          } />
+                        </Route>
+
+                        {/* Finance Routes */}
+                        <Route path="/finance" element={
+                          <ProtectedRoute>
+                            <FinanceLayout />
+                          </ProtectedRoute>
+                        }>
+                          <Route index element={<FinancialDashboard />} />
+                          <Route path="dashboard" element={<FinancialDashboard />} />
+                          <Route path="reports" element={<LedgerReports />} />
+                          <Route path="stats" element={<FinanceAnalytics />} />
+                          <Route path="settings" element={<FinanceSettings />} />
+                          <Route path="team-chat" element={
+                            <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
+                              <TeamChatScreen />
+                            </React.Suspense>
+                          } />
+                          <Route path="change-password" element={
+                            <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
+                              <AdminChangePassword />
+                            </React.Suspense>
+                          } />
+                        </Route>
+
+                        {/* Seller Management Routes (Super Admin) */}
+                        <Route path="/seller-management" element={
+                          <ProtectedRoute>
+                            <SellerManagementLayout />
+                          </ProtectedRoute>
+                        }>
+                          <Route index element={<SellerManagementDashboard />} />
+                          <Route path="dashboard" element={<SellerManagementDashboard />} />
+                          <Route path="sellers" element={<SellerApprovals />} />
+                          <Route path="sellers/:id" element={<SellerDetail />} />
+                          <Route path="product-reviews" element={<ProductReviews />} />
+                          <Route path="active-sellers" element={<ActiveSellers />} />
+                          <Route path="all-products" element={<ProductReviews />} />
+                          <Route path="audit-logs" element={<AuditLogs />} />
+                          <Route path="team-chat" element={
+                            <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
+                              <TeamChatScreen />
+                            </React.Suspense>
+                          } />
+                          <Route path="change-password" element={
+                            <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
+                              <AdminChangePassword />
+                            </React.Suspense>
+                          } />
+                        </Route>
+
+                        {/* Catch All - 404 */}
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                      <ConditionalChatBot />
+                      <ConditionalMobileNav />
+                    </AdminChatProvider>
                   </Router>
                 </WishlistProvider>
               </CartProvider>

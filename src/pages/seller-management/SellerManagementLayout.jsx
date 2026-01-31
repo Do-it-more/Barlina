@@ -39,7 +39,7 @@ const SellerManagementLayoutContent = () => {
         { path: '/seller-management/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { path: '/seller-management/sellers', icon: Store, label: 'Seller Approvals' },
         { path: '/seller-management/product-reviews', icon: FileCheck, label: 'Product Reviews' },
-        { path: '/seller-management/active-sellers', icon: Users, label: 'Active Sellers' },
+
         { path: '/seller-management/all-products', icon: Package, label: 'All Products' },
         { path: '/seller-management/team-chat', icon: MessageSquare, label: 'Team Chat' },
     ];

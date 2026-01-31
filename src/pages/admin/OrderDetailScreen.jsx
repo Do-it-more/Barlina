@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import {
     ArrowLeft, ArrowRight, CheckCircle, XCircle, Truck, Package, Clock,
-    AlertTriangle, FileText, User, MapPin, CreditCard, RotateCcw, Download, Printer, ExternalLink
+    AlertTriangle, FileText, User, MapPin, CreditCard, RotateCcw, Download, Printer, ExternalLink, X, Eye
 } from 'lucide-react';
 import InvoiceModal from '../../components/admin/orders/InvoiceModal';
 
@@ -25,6 +25,21 @@ const OrderDetailScreen = () => {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+    const printFrameRef = useRef(null);
+
+    // Listen for READY_TO_PRINT from child iframe
+    useEffect(() => {
+        const handleMessage = (event) => {
+            if (event.data === 'READY_TO_PRINT' && printFrameRef.current) {
+                // Focus first to ensure print dialog appears over this tab
+                printFrameRef.current.contentWindow.focus();
+                printFrameRef.current.contentWindow.print();
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
 
     const fetchOrderData = async () => {
         try {
@@ -154,16 +169,21 @@ const OrderDetailScreen = () => {
                 <div className="flex gap-2">
                     <button
                         onClick={() => setShowInvoiceModal(true)}
-                        className="px-4 py-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                        <Printer className="h-4 w-4" /> Print / View
-                    </button>
-                    <button
-                        onClick={handleDownloadInvoice}
                         className="px-4 py-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                     >
-                        <Download className="h-4 w-4" /> Download PDF
+                        <Printer className="h-4 w-4" /> Preview Invoice
                     </button>
+                    <button
+                        onClick={() => {
+                            if (printFrameRef.current) {
+                                printFrameRef.current.src = `/order/${order._id}?mode=invoice&t=${Date.now()}`;
+                            }
+                        }}
+                        className="px-4 py-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                        <Printer className="h-4 w-4" /> Print Customer Invoice
+                    </button>
+
 
                     {order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && order.status !== 'REFUNDED' && (
                         <button
@@ -398,6 +418,14 @@ const OrderDetailScreen = () => {
                     </div>
                 )
             }
+
+
+            {/* Hidden Iframe for Printing */}
+            <iframe
+                ref={printFrameRef}
+                className="fixed top-0 left-[-9999px] w-[1000px] h-[1000px]"
+                title="Print Frame"
+            />
         </div >
     );
 };

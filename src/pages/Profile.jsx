@@ -9,6 +9,8 @@ import Footer from '../components/Footer';
 import { User, Mail, Phone, Package, AlertCircle, Clock, CheckCircle, XCircle, X, Plus, Image, Video, Trash2, UploadCloud, MapPin, ChevronDown, ChevronUp, Camera, Edit2, Save, LogOut, Shield, ShieldCheck, Lock, Key, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import AddressBook from '../components/profile/AddressBook';
+import Wallet from '../components/profile/Wallet';
 const Profile = () => {
     const { user, logout } = useAuth();
     const { showToast } = useToast();
@@ -508,139 +510,9 @@ const Profile = () => {
                                 {user?.phoneNumber && <p className="text-sm text-gray-500 dark:text-gray-400">{user.phoneNumber}</p>}
                             </div>
 
-                            {user?.role !== 'super_admin' && user?.role !== 'admin' && ( // Hide address for admins
-                                <div className="space-y-3 text-left">
-                                    {isEditingAddress ? (
-                                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-indigo-100 dark:border-indigo-900 shadow-sm">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div className="flex items-center gap-2">
-                                                    <MapPin className="h-4 w-4 text-indigo-500" />
-                                                    <span className="text-sm font-bold text-slate-900 dark:text-white">Edit Address</span>
-                                                </div>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <div>
-                                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Address Line 1</label>
-                                                    <input
-                                                        type="text"
-                                                        value={tempAddress.street || (typeof tempAddress === 'string' ? tempAddress : '')}
-                                                        onChange={(e) => setTempAddress({ ...tempAddress, street: e.target.value })}
-                                                        placeholder="Street Address"
-                                                        className="w-full text-sm p-3 rounded-lg bg-gray-50 dark:bg-slate-900 border-none ring-1 ring-gray-200 dark:ring-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Address Line 2 (Optional)</label>
-                                                    <input
-                                                        type="text"
-                                                        value={tempAddress.addressLine2 || ''} // Using 'addressLine2' to distinguish
-                                                        onChange={(e) => setTempAddress({ ...tempAddress, addressLine2: e.target.value })}
-                                                        placeholder="Apartment, suite, etc."
-                                                        className="w-full text-sm p-3 rounded-lg bg-gray-50 dark:bg-slate-900 border-none ring-1 ring-gray-200 dark:ring-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div>
-                                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">City</label>
-                                                        <input
-                                                            type="text"
-                                                            value={tempAddress.city || ''}
-                                                            onChange={(e) => setTempAddress({ ...tempAddress, city: e.target.value })}
-                                                            placeholder="City"
-                                                            className="w-full text-sm p-3 rounded-lg bg-gray-50 dark:bg-slate-900 border-none ring-1 ring-gray-200 dark:ring-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">State</label>
-                                                        <input
-                                                            type="text"
-                                                            value={tempAddress.state || ''}
-                                                            onChange={(e) => setTempAddress({ ...tempAddress, state: e.target.value })}
-                                                            placeholder="State"
-                                                            className="w-full text-sm p-3 rounded-lg bg-gray-50 dark:bg-slate-900 border-none ring-1 ring-gray-200 dark:ring-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div>
-                                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Postal Code</label>
-                                                        <input
-                                                            type="text"
-                                                            value={tempAddress.postalCode || ''}
-                                                            onChange={(e) => setTempAddress({ ...tempAddress, postalCode: e.target.value })}
-                                                            placeholder="Postal Code"
-                                                            className="w-full text-sm p-3 rounded-lg bg-gray-50 dark:bg-slate-900 border-none ring-1 ring-gray-200 dark:ring-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Country</label>
-                                                        <input
-                                                            type="text"
-                                                            value={tempAddress.country || ''}
-                                                            onChange={(e) => setTempAddress({ ...tempAddress, country: e.target.value })}
-                                                            placeholder="Country"
-                                                            className="w-full text-sm p-3 rounded-lg bg-gray-50 dark:bg-slate-900 border-none ring-1 ring-gray-200 dark:ring-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {/* Phone Number Field integrated into Address Form */}
-                                                <div>
-                                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Phone Number</label>
-                                                    <input
-                                                        type="tel"
-                                                        value={tempAddress.phoneNumber || ''}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value.replace(/\D/g, '');
-                                                            setTempAddress({ ...tempAddress, phoneNumber: val });
-                                                        }}
-                                                        maxLength={10}
-                                                        placeholder="Phone Number"
-                                                        className="w-full text-sm p-3 rounded-lg bg-gray-50 dark:bg-slate-900 border-none ring-1 ring-gray-200 dark:ring-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-3 justify-end mt-3">
-                                                <button
-                                                    onClick={() => setIsEditingAddress(false)}
-                                                    className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    onClick={handleAddressUpdate}
-                                                    className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
-                                                >
-                                                    <Save className="h-3 w-3" />
-                                                    Save Address
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center justify-between gap-3 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-700/50 p-3 rounded-lg group">
-                                            <div className="flex items-start gap-3 overflow-hidden">
-                                                <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                                                <div className="flex flex-col gap-0.5">
-                                                    {user?.address && typeof user.address === 'object' && (user.address.street || user.address.city) ? (
-                                                        <>
-                                                            <span className="font-medium text-slate-900 dark:text-white">{user.address.street}</span>
-                                                            {user.address.addressLine2 && <span className="text-gray-500 dark:text-gray-400">{user.address.addressLine2}</span>}
-                                                            <span>{user.address.city}, {user.address.state} {user.address.postalCode}</span>
-                                                            <span>{user.address.country}</span>
-                                                        </>
-                                                    ) : (
-                                                        <span className="truncate">{typeof user?.address === 'string' ? user.address : 'No address set'}</span>
-                                                    )}
-                                                    <div className="flex items-center gap-2 mt-1 pt-1 border-t border-gray-200 dark:border-slate-600">
-                                                        <Phone className="h-3 w-3" />
-                                                        <span>{user.address?.phoneNumber || 'No shipping phone added'}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button onClick={() => setIsEditingAddress(true)} className="text-gray-400 hover:text-indigo-600 transition-colors self-start">
-                                                <Edit2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    )}
+                            {user?.role !== 'super_admin' && user?.role !== 'admin' && (
+                                <div className="mt-4">
+                                    {/* Address Book Logic Removed from here, moved to main content */}
                                 </div>
                             )}
 
@@ -673,6 +545,15 @@ const Profile = () => {
 
                     {/* Content Area */}
                     <div className="lg:col-span-3 space-y-8">
+
+                        {/* Address Book Section */}
+                        {user?.role !== 'super_admin' && user?.role !== 'admin' && (
+                            <>
+                                <Wallet />
+                                <AddressBook />
+                            </>
+                        )}
+
                         {/* Complaints Section */}
                         {user?.role !== 'super_admin' && user?.role !== 'admin' ? (
                             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">

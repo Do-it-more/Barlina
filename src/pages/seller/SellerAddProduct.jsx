@@ -17,7 +17,8 @@ import {
     Layers,
     Truck,
     RotateCcw,
-    Clock
+    Clock,
+    Camera
 } from 'lucide-react';
 
 const SellerAddProduct = () => {
@@ -50,8 +51,13 @@ const SellerAddProduct = () => {
         listingStatus: 'DRAFT'
     });
 
+    const [showCamera, setShowCamera] = useState(false);
+    const [cameraTarget, setCameraTarget] = useState(null); // 'main' or 'additional'
     const [newColor, setNewColor] = useState('');
     const [newSpec, setNewSpec] = useState({ heading: '', key: '', value: '' });
+    const videoRef = React.useRef(null);
+    const canvasRef = React.useRef(null);
+    const streamRef = React.useRef(null);
 
     const isEditMode = !!id;
     const isLiveEditing = isEditMode && product.listingStatus === 'APPROVED';
@@ -62,6 +68,38 @@ const SellerAddProduct = () => {
             fetchProduct();
         }
     }, [id]);
+
+    useEffect(() => {
+        if (showCamera) {
+            startCameraStream();
+        } else {
+            stopCameraStream();
+        }
+        return () => {
+            stopCameraStream();
+        };
+    }, [showCamera]);
+
+    const startCameraStream = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            streamRef.current = stream;
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+        } catch (err) {
+            console.error("Camera Error:", err);
+            showToast('Unable to access camera. Please check permissions.', 'error');
+            setShowCamera(false);
+        }
+    };
+
+    const stopCameraStream = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+    };
 
     const fetchCategories = async () => {
         try {
@@ -116,21 +154,29 @@ const SellerAddProduct = () => {
         }));
     };
 
-    const handleImageUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
+    const uploadFile = async (file) => {
         const formData = new FormData();
         formData.append('file', file);
-
         try {
             const { data } = await api.post('/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            setProduct(prev => ({ ...prev, image: data.url }));
-            showToast('Image uploaded successfully', 'success');
+            return data.url;
         } catch (error) {
+            console.error(error);
             showToast('Failed to upload image', 'error');
+            return null;
+        }
+    };
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const url = await uploadFile(file);
+        if (url) {
+            setProduct(prev => ({ ...prev, image: url }));
+            showToast('Image uploaded successfully', 'success');
         }
     };
 
@@ -138,18 +184,50 @@ const SellerAddProduct = () => {
         const file = e.target.files[0];
         if (!file) return;
 
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            const { data } = await api.post('/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            setProduct(prev => ({ ...prev, images: [...prev.images, data.url] }));
+        const url = await uploadFile(file);
+        if (url) {
+            setProduct(prev => ({ ...prev, images: [...prev.images, url] }));
             showToast('Image added', 'success');
-        } catch (error) {
-            showToast('Failed to upload image', 'error');
         }
+    };
+
+    const openCamera = (target) => {
+        setCameraTarget(target);
+        setShowCamera(true);
+    };
+
+    const captureImage = async () => {
+        if (!videoRef.current || !canvasRef.current) return;
+
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+
+        // Set canvas dimensions to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        // Draw video frame to canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Convert to Blob/File
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
+            const file = new File([blob], `capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+            // Upload
+            const url = await uploadFile(file);
+            if (url) {
+                if (cameraTarget === 'main') {
+                    setProduct(prev => ({ ...prev, image: url }));
+                    showToast('Image captured successfully', 'success');
+                } else if (cameraTarget === 'additional') {
+                    setProduct(prev => ({ ...prev, images: [...prev.images, url] }));
+                    showToast('Image captured successfully', 'success');
+                }
+                setShowCamera(false);
+            }
+        }, 'image/jpeg', 0.8);
     };
 
     const removeAdditionalImage = (index) => {
@@ -421,20 +499,30 @@ const SellerAddProduct = () => {
                                 <div className="relative border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-4 text-center">
                                     {product.image ? (
                                         <div className="relative">
-                                            <img src={product.image} alt="Main" className="w-full h-40 object-cover rounded-lg" />
+                                            <img src={product.image} alt="Main" className="w-full h-64 object-contain bg-gray-50 dark:bg-slate-900 rounded-lg" />
                                             <button
                                                 onClick={() => setProduct(prev => ({ ...prev, image: '' }))}
-                                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full"
+                                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
                                             >
                                                 <X className="h-4 w-4" />
                                             </button>
                                         </div>
                                     ) : (
-                                        <label className="cursor-pointer">
-                                            <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                                            <p className="text-sm text-gray-500">Click to upload main image</p>
-                                            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                                        </label>
+                                        <div className="flex flex-col items-center gap-3">
+                                            <label className="cursor-pointer">
+                                                <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                                                <p className="text-sm text-gray-500">Click to upload main image</p>
+                                                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                                            </label>
+                                            <span className="text-xs text-gray-400">- OR -</span>
+                                            <button
+                                                onClick={() => openCamera('main')}
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-sm font-medium hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                                            >
+                                                <Camera className="h-4 w-4" />
+                                                Check Camera
+                                            </button>
+                                        </div>
                                     )}
                                     {isLiveEditing && (
                                         <div className="absolute inset-0 bg-gray-100/50 flex items-center justify-center backdrop-blur-[1px] rounded-lg z-10 cursor-not-allowed">
@@ -451,17 +539,24 @@ const SellerAddProduct = () => {
                                             <img src={img} alt={`Additional ${idx}`} className="w-full h-20 object-cover rounded-lg" />
                                             <button
                                                 onClick={() => removeAdditionalImage(idx)}
-                                                className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full"
+                                                className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600"
                                             >
                                                 <X className="h-3 w-3" />
                                             </button>
                                         </div>
                                     ))}
                                     {product.images.length < 4 && (
-                                        <label className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg h-20 flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700">
-                                            <Plus className="h-6 w-6 text-gray-400" />
-                                            <input type="file" accept="image/*" onChange={handleAdditionalImageUpload} className="hidden" />
-                                        </label>
+                                        <div className="flex flex-col gap-1 items-center justify-center border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg h-20 hover:bg-gray-50 dark:hover:bg-slate-700">
+                                            <div className="flex gap-2">
+                                                <label className="cursor-pointer p-1">
+                                                    <Plus className="h-5 w-5 text-gray-400" />
+                                                    <input type="file" accept="image/*" onChange={handleAdditionalImageUpload} className="hidden" />
+                                                </label>
+                                                <button onClick={() => openCamera('additional')} className="p-1">
+                                                    <Camera className="h-5 w-5 text-gray-400" />
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
                                     {isLiveEditing && (
                                         <div className="absolute inset-0 bg-gray-100/50 flex items-center justify-center backdrop-blur-[1px] rounded-lg z-10 cursor-not-allowed"></div>
@@ -620,6 +715,40 @@ const SellerAddProduct = () => {
                     )}
                 </div>
             </div>
+
+            {/* Camera Modal */}
+            {showCamera && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden max-w-lg w-full relative">
+                        <div className="bg-black relative aspect-[4/3] flex items-center justify-center">
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="w-full h-full object-cover"
+                            />
+                            <canvas ref={canvasRef} className="hidden" />
+
+                            <button
+                                onClick={() => setShowCamera(false)}
+                                className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="p-4 flex flex-col items-center gap-4 bg-white dark:bg-slate-800">
+                            <p className="text-sm text-gray-500">Position your product and click capture</p>
+                            <button
+                                onClick={captureImage}
+                                className="h-16 w-16 rounded-full border-4 border-indigo-600 flex items-center justify-center bg-indigo-100 hover:bg-indigo-200 transition-colors group"
+                            >
+                                <div className="h-12 w-12 rounded-full bg-indigo-600 group-hover:bg-indigo-700 transition-colors" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

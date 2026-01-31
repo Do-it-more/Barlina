@@ -129,6 +129,10 @@ const SellerDetail = () => {
                     });
                     showToast('Commission updated', 'success');
                     break;
+                case 'unblock':
+                    await api.put(`${endpoint}/unblock`, {});
+                    showToast('Seller unblocked', 'success');
+                    break;
                 default:
                     break;
             }
@@ -312,6 +316,15 @@ const SellerDetail = () => {
                             </button>
                         </>
                     )}
+                    {seller.status === 'BLOCKED' && (
+                        <button
+                            onClick={() => setShowActionModal('unblock')}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                        >
+                            <CheckCircle className="h-4 w-4" />
+                            Unblock Seller
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -336,100 +349,130 @@ const SellerDetail = () => {
             {/* Tab Content */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 p-6">
                 {activeTab === 'overview' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Business Details */}
-                        <div>
-                            <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                <Building2 className="h-5 w-5 text-orange-500" />
-                                Business Details
-                            </h3>
-                            <div className="space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Business Name</span>
-                                    <span className="font-medium">{seller.businessName}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">GSTIN</span>
-                                    <span className="font-medium">{seller.gstin || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">PAN</span>
-                                    <span className="font-medium">{seller.pan || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Category</span>
-                                    <span className="font-medium">{seller.businessCategory || 'N/A'}</span>
+                    <div className="space-y-6">
+                        {(seller.status === 'SUSPENDED' || seller.status === 'BLOCKED') && seller.suspensionReason && (
+                            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 flex items-start gap-3">
+                                <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <h3 className="font-semibold text-orange-800 dark:text-orange-300">
+                                        Account {seller.status === 'BLOCKED' ? 'Blocked' : 'Suspended'}
+                                    </h3>
+                                    <p className="text-orange-700 dark:text-orange-400 mt-1">
+                                        <strong>Reason:</strong> {seller.suspensionReason}
+                                    </p>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Contact Details */}
-                        <div>
-                            <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                <User className="h-5 w-5 text-orange-500" />
-                                Contact Details
-                            </h3>
-                            <div className="space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Email</span>
-                                    <span className="font-medium">{seller.email}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Phone</span>
-                                    <span className="font-medium">{seller.phone}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Address</span>
-                                    <span className="font-medium text-right">
-                                        {seller.address?.street}, {seller.address?.city}<br />
-                                        {seller.address?.state} - {seller.address?.pincode}
-                                    </span>
+                        {seller.status === 'REJECTED' && seller.rejectionReason && (
+                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-start gap-3">
+                                <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <h3 className="font-semibold text-red-800 dark:text-red-300">
+                                        Application Rejected
+                                    </h3>
+                                    <p className="text-red-700 dark:text-red-400 mt-1">
+                                        <strong>Reason:</strong> {seller.rejectionReason}
+                                    </p>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Bank Details */}
-                        <div>
-                            <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                <CreditCard className="h-5 w-5 text-orange-500" />
-                                Bank Details
-                            </h3>
-                            <div className="space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Bank Name</span>
-                                    <span className="font-medium">{seller.bankDetails?.bankName || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Account Number</span>
-                                    <span className="font-medium">{seller.bankDetails?.accountNumber ? '****' + seller.bankDetails.accountNumber.slice(-4) : 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">IFSC</span>
-                                    <span className="font-medium">{seller.bankDetails?.ifsc || 'N/A'}</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Business Details */}
+                            <div>
+                                <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                                    <Building2 className="h-5 w-5 text-orange-500" />
+                                    Business Details
+                                </h3>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Business Name</span>
+                                        <span className="font-medium">{seller.businessName}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">GSTIN</span>
+                                        <span className="font-medium">{seller.gstin || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">PAN</span>
+                                        <span className="font-medium">{seller.pan || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Category</span>
+                                        <span className="font-medium">{seller.businessCategory || 'N/A'}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Registration Info */}
-                        <div>
-                            <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                <Calendar className="h-5 w-5 text-orange-500" />
-                                Registration Info
-                            </h3>
-                            <div className="space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Registered On</span>
-                                    <span className="font-medium">{new Date(seller.createdAt).toLocaleDateString()}</span>
+                            {/* Contact Details */}
+                            <div>
+                                <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                                    <User className="h-5 w-5 text-orange-500" />
+                                    Contact Details
+                                </h3>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Email</span>
+                                        <span className="font-medium">{seller.email}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Phone</span>
+                                        <span className="font-medium">{seller.phone}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Address</span>
+                                        <span className="font-medium text-right">
+                                            {seller.address?.street}, {seller.address?.city}<br />
+                                            {seller.address?.state} - {seller.address?.pincode}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">KYC Status</span>
-                                    <span className={`font-medium ${seller.kyc?.status === 'VERIFIED' ? 'text-green-600' : seller.kyc?.status === 'REJECTED' ? 'text-red-600' : 'text-yellow-600'}`}>
-                                        {seller.kyc?.status || 'NOT_SUBMITTED'}
-                                    </span>
+                            </div>
+
+                            {/* Bank Details */}
+                            <div>
+                                <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                                    <CreditCard className="h-5 w-5 text-orange-500" />
+                                    Bank Details
+                                </h3>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Bank Name</span>
+                                        <span className="font-medium">{seller.bankDetails?.bankName || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Account Number</span>
+                                        <span className="font-medium">{seller.bankDetails?.accountNumber ? '****' + seller.bankDetails.accountNumber.slice(-4) : 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">IFSC</span>
+                                        <span className="font-medium">{seller.bankDetails?.ifsc || 'N/A'}</span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Onboarding Step</span>
-                                    <span className="font-medium">{seller.onboardingStep || 1}/5</span>
+                            </div>
+
+                            {/* Registration Info */}
+                            <div>
+                                <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                                    <Calendar className="h-5 w-5 text-orange-500" />
+                                    Registration Info
+                                </h3>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Registered On</span>
+                                        <span className="font-medium">{new Date(seller.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">KYC Status</span>
+                                        <span className={`font-medium ${seller.kyc?.status === 'VERIFIED' ? 'text-green-600' : seller.kyc?.status === 'REJECTED' ? 'text-red-600' : 'text-yellow-600'}`}>
+                                            {seller.kyc?.status || 'NOT_SUBMITTED'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Onboarding Step</span>
+                                        <span className="font-medium">{seller.onboardingStep || 1}/5</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -800,6 +843,7 @@ const SellerDetail = () => {
                             {showActionModal === 'suspend' && 'Suspend Seller'}
                             {showActionModal === 'activate' && 'Reactivate Seller'}
                             {showActionModal === 'block' && 'Block Seller'}
+                            {showActionModal === 'unblock' && 'Unblock Seller'}
                             {showActionModal === 'commission' && 'Set Commission Rate'}
                         </h3>
 
@@ -875,7 +919,7 @@ const SellerDetail = () => {
                                             : 'bg-red-600 hover:bg-red-700'
                                         }`}
                                 >
-                                    {actionLoading ? 'Processing...' : 'Confirm'}
+                                    {actionLoading ? 'Processing...' : (showActionModal === 'unblock' ? 'Unblock' : 'Confirm')}
                                 </button>
                             </div>
                         </div>

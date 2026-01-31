@@ -12,10 +12,12 @@ import CheckoutForm from '../components/CheckoutForm';
 import confetti from 'canvas-confetti';
 import api from '../services/api';
 import { useSettings } from '../context/SettingsContext';
-import { Tag, X, Wallet, Truck } from 'lucide-react';
+import { Tag, X, Wallet, Truck, MapPin } from 'lucide-react';
+import AddressBook from '../components/profile/AddressBook';
 
 // Replace with your Stripe Publishable Key
-const stripePromise = loadStripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
+// Replace with your Stripe Publishable Key
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUB_KEY || 'pk_test_TYooMQauvdEDq54NiTphI7jx');
 
 const Checkout = () => {
     const { cart, getCartTotal, clearCart } = useCart();
@@ -34,6 +36,19 @@ const Checkout = () => {
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [couponError, setCouponError] = useState('');
     const [isApplying, setIsApplying] = useState(false);
+    const [showAddressBook, setShowAddressBook] = useState(false);
+
+    const handleSelectAddress = (address) => {
+        setForm({
+            address: address.street,
+            address2: address.addressLine2 || '',
+            city: address.city,
+            country: address.state, // Mapping state to country field as per original form
+            postalCode: address.postalCode,
+            phoneNumber: address.phoneNumber || user.phoneNumber || ''
+        });
+        setShowAddressBook(false);
+    };
 
     const handleApplyCoupon = async () => {
         if (!couponCode) return;
@@ -268,43 +283,19 @@ const Checkout = () => {
                             <div>
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-xl font-bold text-slate-900 dark:text-white">Shipping Address</h2>
-                                    {user?.address && (
-                                        <label className="flex items-center gap-2 cursor-pointer group">
-                                            <input
-                                                type="checkbox"
-                                                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 transition-colors"
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        const addr = user.address;
-                                                        if (typeof addr === 'object' && (addr.street || addr.city)) {
-                                                            setForm({
-                                                                ...form,
-                                                                address: addr.street || '',
-                                                                address2: addr.addressLine2 || '',
-                                                                city: addr.city || '',
-                                                                country: addr.state || '',
-                                                                postalCode: addr.postalCode || '',
-                                                                phoneNumber: addr.phoneNumber || user.phoneNumber || ''
-                                                            });
-                                                        } else if (typeof addr === 'string') {
-                                                            setForm({ ...form, address: addr, phoneNumber: user.phoneNumber || '' });
-                                                        }
-                                                    } else {
-                                                        setForm({
-                                                            address: '',
-                                                            address2: '',
-                                                            city: '',
-                                                            postalCode: '',
-                                                            country: '',
-                                                            phoneNumber: ''
-                                                        });
-                                                    }
-                                                }}
-                                            />
-                                            <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 transition-colors">Use saved address</span>
-                                        </label>
-                                    )}
+                                    <button
+                                        onClick={() => setShowAddressBook(!showAddressBook)}
+                                        className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1"
+                                    >
+                                        <MapPin className="h-4 w-4" /> Select Saved Address
+                                    </button>
                                 </div>
+
+                                {showAddressBook && (
+                                    <div className="mb-6 p-4 border border-indigo-100 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-xl">
+                                        <AddressBook onSelect={handleSelectAddress} selectedId={null} />
+                                    </div>
+                                )}
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Address Line 1</label>

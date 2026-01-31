@@ -47,7 +47,7 @@ const LedgerReports = () => {
         sortOrder: 'desc'
     });
 
-    const [runningBalance, setRunningBalance] = useState([]);
+    const [runningBalance, setRunningBalance] = useState([]); // Kept for legacy prop compatibility if any, but ideally unused
 
     useEffect(() => {
         fetchData();
@@ -62,10 +62,24 @@ const LedgerReports = () => {
             if (filters.endDate) query.append('endDate', filters.endDate);
 
             const recordsRes = await api.get(`/finance?${query.toString()}`);
-            let sortedRecords = recordsRes.data;
+            let fetchedRecords = recordsRes.data;
 
-            // Client-side sorting
-            sortedRecords.sort((a, b) => {
+            // 1. Sort Chronologically (Ascending) to calculate correct running balance
+            fetchedRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // 2. Calculate Balance and attach to record
+            let currentBalance = 0;
+            const recordsWithBalance = fetchedRecords.map(record => {
+                if (record.type === 'INCOME') {
+                    currentBalance += record.amount;
+                } else {
+                    currentBalance -= record.amount;
+                }
+                return { ...record, balance: currentBalance };
+            });
+
+            // 3. Sort for Display based on User Preference
+            recordsWithBalance.sort((a, b) => {
                 if (filters.sortBy === 'date') {
                     return filters.sortOrder === 'desc'
                         ? new Date(b.date) - new Date(a.date)
@@ -79,19 +93,10 @@ const LedgerReports = () => {
                 return 0;
             });
 
-            setRecords(sortedRecords);
+            setRecords(recordsWithBalance);
+            // Update runningBalance array just in case, though we should prefer record.balance
+            setRunningBalance(recordsWithBalance.map(r => r.balance));
 
-            // Calculate running balance
-            let balance = 0;
-            const balances = sortedRecords.map(record => {
-                if (record.type === 'INCOME') {
-                    balance += record.amount;
-                } else {
-                    balance -= record.amount;
-                }
-                return balance;
-            });
-            setRunningBalance(balances);
         } catch (error) {
             console.error("Failed to fetch ledger data", error);
             showToast("Failed to load ledger data", 'error');
@@ -127,20 +132,45 @@ const LedgerReports = () => {
         currentPage * recordsPerPage
     );
 
+    // Helper to get customer details
+    const getCustomerDetails = (record) => {
+        // Try getting from reference (Order/Return) first
+        const refUser = record.reference?.id?.user;
+        if (refUser) return { name: refUser.name, phone: refUser.phoneNumber || 'N/A', email: refUser.email };
+
+        // Fallback to creator if available
+        if (record.createdBy) {
+            return {
+                name: record.createdBy.name,
+                phone: record.createdBy.phoneNumber || 'N/A',
+                email: record.createdBy.email
+            };
+        }
+
+        return { name: 'System', phone: 'N/A', email: 'N/A' };
+    };
+
     // Export functions
     const handleExportCSV = () => {
-        const headers = ['Date', 'Type', 'Category', 'Description', 'Amount', 'Balance', 'Created By'];
+        const headers = ['Date', 'Time', 'Type', 'Category', 'Description', 'Method', 'Customer Name', 'Customer Phone', 'Amount', 'Balance', 'Created By'];
         const csvContent = [
             headers.join(','),
-            ...filteredRecords.map((record, index) => [
-                new Date(record.date).toLocaleDateString(),
-                record.type,
-                `"${record.category}"`,
-                `"${record.description}"`,
-                record.type === 'INCOME' ? `+${record.amount}` : `-${record.amount}`,
-                runningBalance[index],
-                record.createdBy?.name || 'System'
-            ].join(','))
+            ...filteredRecords.map((record, index) => {
+                const customer = getCustomerDetails(record);
+                return [
+                    new Date(record.date).toLocaleDateString(),
+                    new Date(record.date).toLocaleTimeString(),
+                    record.type,
+                    `"${record.category}"`,
+                    `"${record.description}"`,
+                    record.paymentMethod || 'N/A',
+                    `"${customer.name}"`,
+                    `"${customer.phone}"`,
+                    record.type === 'INCOME' ? `+${record.amount}` : `-${record.amount}`,
+                    record.balance,
+                    record.createdBy?.name || 'System'
+                ].join(',');
+            })
         ].join('\n');
 
         downloadFile(csvContent, 'text/csv', `ledger_report_${new Date().toISOString().split('T')[0]}.csv`);
@@ -148,20 +178,32 @@ const LedgerReports = () => {
     };
 
     const handleExportPDF = () => {
-        // Generate printable HTML for PDF
         const printWindow = window.open('', '_blank');
-        const tableRows = filteredRecords.map((record, index) => `
+        const tableRows = filteredRecords.map((record, index) => {
+            const customer = getCustomerDetails(record);
+            return `
             <tr>
-                <td>${new Date(record.date).toLocaleDateString()}</td>
+                <td>
+                    ${new Date(record.date).toLocaleDateString()}<br/>
+                    <small style="color:#666">${new Date(record.date).toLocaleTimeString()}</small>
+                </td>
                 <td>${record.type}</td>
-                <td>${record.category}</td>
+                <td>
+                    <b>${record.category}</b><br/>
+                    <small>${record.paymentMethod || 'N/A'}</small>
+                </td>
+                <td>
+                    ${customer.name}<br/>
+                    <small>${customer.phone}</small>
+                </td>
                 <td>${record.description}</td>
                 <td style="text-align: right; color: ${record.type === 'INCOME' ? 'green' : 'red'}">
                     ${record.type === 'INCOME' ? '+' : '-'}₹${record.amount.toLocaleString()}
                 </td>
-                <td style="text-align: right">₹${runningBalance[index]?.toLocaleString()}</td>
+                <td style="text-align: right">₹${record.balance?.toLocaleString()}</td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
 
         printWindow.document.write(`
             <!DOCTYPE html>
@@ -169,11 +211,11 @@ const LedgerReports = () => {
             <head>
                 <title>Financial Ledger Report</title>
                 <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
                     h1 { color: #1e293b; margin-bottom: 5px; }
                     .subtitle { color: #64748b; margin-bottom: 20px; }
                     table { width: 100%; border-collapse: collapse; }
-                    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+                    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
                     th { background: #f8fafc; font-weight: 600; color: #475569; }
                     tr:hover { background: #f8fafc; }
                     @media print { body { -webkit-print-color-adjust: exact; } }
@@ -181,13 +223,14 @@ const LedgerReports = () => {
             </head>
             <body>
                 <h1>Financial Ledger Report</h1>
-                <p class="subtitle">Generated on ${new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</p>
+                <p class="subtitle">Generated on ${new Date().toLocaleDateString('en-IN', { dateStyle: 'full', timeStyle: 'short' })}</p>
                 <table>
                     <thead>
                         <tr>
-                            <th>Date</th>
+                            <th>Date & Time</th>
                             <th>Type</th>
-                            <th>Category</th>
+                            <th>Category / Method</th>
+                            <th>Customer</th>
                             <th>Description</th>
                             <th style="text-align: right">Amount</th>
                             <th style="text-align: right">Balance</th>
@@ -305,8 +348,8 @@ const LedgerReports = () => {
                     <button
                         onClick={() => setShowFilters(!showFilters)}
                         className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm font-medium transition-colors ${showFilters
-                                ? 'border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20'
-                                : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                            ? 'border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20'
+                            : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                             }`}
                     >
                         <SlidersHorizontal className="h-4 w-4" />
@@ -345,6 +388,7 @@ const LedgerReports = () => {
                                 className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                             >
                                 <option value="">All Types</option>
+                                <option value="INCOME">Income</option>
                                 <option value="EXPENSE">Expenses</option>
                                 <option value="SALARY">Salaries</option>
                                 <option value="ADJUSTMENT">Adjustments</option>
@@ -453,9 +497,10 @@ const LedgerReports = () => {
                                             )}
                                         </button>
                                     </th>
-                                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date & Time</th>
                                     <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
                                     <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
                                     <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
                                     <th className="px-4 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
                                     <th className="px-4 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance</th>
@@ -466,6 +511,8 @@ const LedgerReports = () => {
                                 {paginatedRecords.map((record, index) => {
                                     const styles = getTypeStyles(record.type);
                                     const globalIndex = (currentPage - 1) * recordsPerPage + index;
+                                    const customer = getCustomerDetails(record);
+
                                     return (
                                         <tr
                                             key={record._id}
@@ -482,13 +529,20 @@ const LedgerReports = () => {
                                                 </button>
                                             </td>
                                             <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                                <div className="flex items-center gap-2">
-                                                    <Calendar className="h-4 w-4 text-gray-400" />
-                                                    {new Date(record.date).toLocaleDateString('en-IN', {
-                                                        day: '2-digit',
-                                                        month: 'short',
-                                                        year: 'numeric'
-                                                    })}
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-slate-800 dark:text-white">
+                                                        {new Date(record.date).toLocaleDateString('en-IN', {
+                                                            day: '2-digit',
+                                                            month: 'short',
+                                                            year: 'numeric'
+                                                        })}
+                                                    </span>
+                                                    <span className="text-xs text-gray-400">
+                                                        {new Date(record.date).toLocaleTimeString('en-IN', {
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                    </span>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-4">
@@ -498,7 +552,18 @@ const LedgerReports = () => {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-4 text-sm font-medium text-slate-800 dark:text-white">
-                                                {record.category}
+                                                <div className="flex flex-col">
+                                                    <span>{record.category}</span>
+                                                    <span className="text-xs text-gray-400 font-normal">
+                                                        Via {record.paymentMethod}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{customer.name}</span>
+                                                    <span className="text-xs text-gray-400">{customer.phone}</span>
+                                                </div>
                                             </td>
                                             <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
                                                 {record.description}
@@ -509,8 +574,8 @@ const LedgerReports = () => {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-4 text-right">
-                                                <span className={`text-sm font-medium ${runningBalance[globalIndex] >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                    ₹{runningBalance[globalIndex]?.toLocaleString()}
+                                                <span className={`text-sm font-medium ${record.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                    ₹{record.balance?.toLocaleString()}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-4 text-center">
@@ -558,8 +623,8 @@ const LedgerReports = () => {
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
                                         className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                                                ? 'bg-emerald-600 text-white'
-                                                : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300'
+                                            ? 'bg-emerald-600 text-white'
+                                            : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300'
                                             }`}
                                     >
                                         {page}
@@ -591,40 +656,91 @@ const LedgerReports = () => {
                                 <X className="h-5 w-5 text-gray-500" />
                             </button>
                         </div>
-                        <div className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wider">Date</label>
-                                    <p className="text-slate-800 dark:text-white font-medium mt-1">
-                                        {new Date(viewRecord.date).toLocaleDateString('en-IN', { dateStyle: 'long' })}
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wider">Type</label>
-                                    <p className="mt-1">
-                                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${getTypeStyles(viewRecord.type).bg} ${getTypeStyles(viewRecord.type).text}`}>
-                                            {viewRecord.type}
-                                        </span>
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wider">Category</label>
-                                    <p className="text-slate-800 dark:text-white font-medium mt-1">{viewRecord.category}</p>
-                                </div>
+                        <div className="p-6 space-y-5">
+                            <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-700/50 p-4 rounded-xl">
                                 <div>
                                     <label className="text-xs text-gray-500 uppercase tracking-wider">Amount</label>
-                                    <p className={`font-bold mt-1 text-lg ${viewRecord.type === 'INCOME' ? 'text-emerald-600' : 'text-red-600'}`}>
+                                    <p className={`font-bold mt-1 text-2xl ${viewRecord.type === 'INCOME' ? 'text-emerald-600' : 'text-red-600'}`}>
                                         {viewRecord.type === 'INCOME' ? '+' : '-'}₹{viewRecord.amount.toLocaleString()}
                                     </p>
                                 </div>
+                                <div className="text-right">
+                                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${getTypeStyles(viewRecord.type).bg} ${getTypeStyles(viewRecord.type).text}`}>
+                                        {React.createElement(getTypeStyles(viewRecord.type).icon, { className: "h-3 w-3" })}
+                                        {viewRecord.type}
+                                    </span>
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-xs text-gray-500 uppercase tracking-wider">Description</label>
-                                <p className="text-slate-800 dark:text-white mt-1">{viewRecord.description}</p>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Date & Time</label>
+                                    <p className="text-slate-800 dark:text-white mt-1">
+                                        {new Date(viewRecord.date).toLocaleDateString('en-IN', { dateStyle: 'long' })}
+                                        <br />
+                                        <span className="text-sm text-gray-500">{new Date(viewRecord.date).toLocaleTimeString()}</span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Payment Method</label>
+                                    <p className="text-slate-800 dark:text-white font-medium mt-1 uppercase">
+                                        {viewRecord.paymentMethod || 'N/A'}
+                                    </p>
+                                    {(viewRecord.paymentId || viewRecord.reference?.id?.paymentResult?.id || viewRecord.reference?.id?.paymentInfo?.id) && (
+                                        <p className="text-xs text-gray-500 mt-1 break-all">
+                                            ID: <span className="font-mono select-all text-indigo-600 dark:text-indigo-400">
+                                                {viewRecord.paymentId || viewRecord.reference?.id?.paymentResult?.id || viewRecord.reference?.id?.paymentInfo?.id}
+                                            </span>
+                                        </p>
+                                    )}
+                                </div>
                             </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Category</label>
+                                    <p className="text-slate-800 dark:text-white font-medium mt-1">{viewRecord.category}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Customer Details</label>
+                                    <p className="text-slate-800 dark:text-white font-medium mt-1">{getCustomerDetails(viewRecord).name}</p>
+                                    <p className="text-xs text-gray-500">{getCustomerDetails(viewRecord).phone}</p>
+                                    <p className="text-xs text-gray-400">{getCustomerDetails(viewRecord).email}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Reference / Invoice #</label>
+                                    <p className="text-slate-800 dark:text-white font-mono text-sm mt-1">
+                                        {viewRecord.reference?.id?.invoiceNumber || (typeof viewRecord.reference?.id === 'string' ? viewRecord.reference?.id : 'N/A')}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Status</label>
+                                    <p className="mt-1">
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                            {viewRecord.status || 'COMPLETED'}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+
                             <div>
-                                <label className="text-xs text-gray-500 uppercase tracking-wider">Created By</label>
-                                <p className="text-slate-800 dark:text-white mt-1">{viewRecord.createdBy?.name || 'System'}</p>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Description</label>
+                                    <span className="text-xs text-gray-400 font-mono">ID: {viewRecord._id}</span>
+                                </div>
+                                <div className="p-3 bg-gray-50 dark:bg-slate-700/30 rounded-lg border border-gray-100 dark:border-slate-700">
+                                    <p className="text-slate-800 dark:text-white text-sm">{viewRecord.description}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-slate-700 mt-2">
+                                <label className="text-xs text-gray-500">Record Created By:</label>
+                                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                                    {viewRecord.createdBy?.name || 'System'}
+                                </span>
                             </div>
                         </div>
                     </div>
