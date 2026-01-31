@@ -39,7 +39,8 @@ export const AuthProvider = ({ children }) => {
         if (!user?._id) return; // Only connect if user is logged in
 
         let socket;
-        const socketUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/api\/?$/, '');
+        const defaultUrl = import.meta.env.DEV ? 'http://localhost:5001' : 'https://barlina-be-db.onrender.com';
+        const socketUrl = (import.meta.env.VITE_API_URL || defaultUrl).replace(/\/api\/?$/, '');
 
         import('socket.io-client').then(({ io }) => {
             // Check if component already unmounted or user changed before this loads

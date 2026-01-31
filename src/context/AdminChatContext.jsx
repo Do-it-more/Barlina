@@ -31,7 +31,8 @@ export const AdminChatProvider = ({ children }) => {
 
         // Socket connects to base server URL, not API endpoint
         // Remove /api suffix if present in VITE_API_URL
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+        const defaultUrl = import.meta.env.DEV ? 'http://localhost:5001' : 'https://barlina-be-db.onrender.com';
+        const apiUrl = import.meta.env.VITE_API_URL || defaultUrl;
         const socketUrl = apiUrl.replace(/\/api\/?$/, '');
 
         console.log('[Chat] Connecting to socket at:', socketUrl);
