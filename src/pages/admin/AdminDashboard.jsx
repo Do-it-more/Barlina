@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom'; // Added Link
 import api from '../../services/api';
+import { useSocket } from '../../context/SocketContext';
 import {
     BarChart,
     Bar,
@@ -21,6 +22,7 @@ import { useToast } from '../../context/ToastContext';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
+    const { socket } = useSocket();
     const { showToast } = useToast();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -45,6 +47,22 @@ const AdminDashboard = () => {
         };
         fetchStats();
     }, [user, showToast]);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleNewOrder = (data) => {
+            showToast(`💰 New Order! ₹${data.amount} from ${data.user}`, 'success');
+            // Refresh stats quietly
+            api.get('/orders/analytics/stats').then(({ data }) => setStats(data)).catch(console.error);
+        };
+
+        socket.on('new_order', handleNewOrder);
+
+        return () => {
+            socket.off('new_order', handleNewOrder);
+        };
+    }, [socket, showToast]);
 
     if (loading) return (
         <div className="flex h-96 items-center justify-center">

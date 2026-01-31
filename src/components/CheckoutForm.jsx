@@ -351,7 +351,13 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
         } catch (err) {
             console.error("Payment Error:", err);
             const backendError = err.response?.data?.error || err.response?.data?.message;
-            const msg = backendError ? `Payment Error: ${backendError}` : (err.message || "Failed to initiate payment");
+
+            let msg = backendError ? `Payment Error: ${backendError}` : (err.message || "Failed to initiate payment");
+
+            if (err.response?.status === 404) {
+                msg = "Payment Gateway Offline or Misconfigured (404). Please check server connection.";
+            }
+
             setError(msg);
             showToast(msg, "error");
             setLoading(false);

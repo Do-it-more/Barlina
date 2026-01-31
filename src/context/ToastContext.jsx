@@ -71,9 +71,7 @@ export const ToastProvider = ({ children }) => {
     return (
         <ToastContext.Provider value={{ showToast }}>
             {children}
-            <div className="fixed z-[100] flex flex-col gap-2 pointer-events-none 
-                /* Mobile: Top Center (Toast Style) */
-                top-4 left-1/2 -translate-x-1/2 w-[90vw] max-w-sm
+            <div className="fixed z-[100] hidden md:flex flex-col gap-2 pointer-events-none 
                 /* Desktop: Top-Right Toast */
                 md:top-20 md:right-4 md:left-auto md:w-auto md:transform-none"
             >

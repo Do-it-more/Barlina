@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import WishlistButton from '../components/WishlistButton';
 import { useToast } from '../context/ToastContext';
-import { Star, ShoppingCart, ShoppingBag, Minus, Plus, Heart, Truck, ShieldCheck, ArrowLeft, ArrowRight, Loader, Banknote, MapPin, AlertCircle, RotateCcw, Tag, Flame } from 'lucide-react';
+import { Star, ShoppingCart, ShoppingBag, Minus, Plus, Heart, Truck, ShieldCheck, ArrowLeft, ArrowRight, Loader, Banknote, MapPin, AlertCircle, RotateCcw, Tag, Flame, Bell, X } from 'lucide-react';
 import RecentlyViewed from '../components/product/RecentlyViewed';
 
 const ProductDetail = () => {
@@ -38,6 +38,14 @@ const ProductDetail = () => {
     const [pincode, setPincode] = useState('');
     const [isPincodeChecked, setIsPincodeChecked] = useState(false);
     const [showPolicyTooltip, setShowPolicyTooltip] = useState(false);
+
+    // Notify Me State
+    const [showNotifyModal, setShowNotifyModal] = useState(false);
+    const [notifyEmail, setNotifyEmail] = useState('');
+
+    useEffect(() => {
+        if (user?.email) setNotifyEmail(user.email);
+    }, [user]);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -71,6 +79,17 @@ const ProductDetail = () => {
             showToast("Delivery available to this pincode", "success");
         } else {
             showToast("Please enter a valid 6-digit pincode", "error");
+        }
+    };
+
+    const handleNotify = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post(`/products/${product._id}/subscribe`, { email: notifyEmail });
+            showToast("You'll be notified when this is back!", "success");
+            setShowNotifyModal(false);
+        } catch (error) {
+            showToast(error.response?.data?.message || "Failed to subscribe", "error");
         }
     };
 
@@ -276,11 +295,19 @@ const ProductDetail = () => {
                                 </div>
                                 <div className="flex flex-col gap-1">
                                     {product.isStockEnabled !== false && product.countInStock === 0 ? (
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                                            <span className="text-sm font-semibold text-red-500">
-                                                Out of Stock
-                                            </span>
+                                        <div className="flex flex-col gap-1 items-start">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                                                <span className="text-sm font-semibold text-red-500">
+                                                    Out of Stock
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={() => setShowNotifyModal(true)}
+                                                className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center gap-1 mt-1"
+                                            >
+                                                <Bell className="h-3 w-3" /> Notify me
+                                            </button>
                                         </div>
                                     ) : product.isStockEnabled === false || !globalStockCountVisible ? (
                                         <div className="flex items-center gap-2">
@@ -697,6 +724,37 @@ const ProductDetail = () => {
                     </motion.section>
                 )}
             </AnimatePresence>
+
+            {/* Notify Modal */}
+            {showNotifyModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-xl border border-gray-100 dark:border-slate-700">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Bell className="h-5 w-5 text-indigo-500" />
+                                Notify Me
+                            </h3>
+                            <button onClick={() => setShowNotifyModal(false)}><X className="h-5 w-5 text-gray-500" /></button>
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                            Enter your email to receive a notification when <strong>{product.name}</strong> is back in stock.
+                        </p>
+                        <form onSubmit={handleNotify} className="space-y-4">
+                            <input
+                                type="email"
+                                required
+                                placeholder="Your Email Address"
+                                value={notifyEmail}
+                                onChange={(e) => setNotifyEmail(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-white"
+                            />
+                            <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors">
+                                Subscribe
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             <Footer />
         </div >
