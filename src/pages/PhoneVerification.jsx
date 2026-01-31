@@ -202,11 +202,7 @@ const PhoneVerification = () => {
         }
     };
 
-    const handleSkip = () => {
-        // Allow user to skip but show a warning
-        showToast("You can add your phone number later in Account Settings", "info");
-        navigate('/');
-    };
+
 
     if (!user) {
         return (
@@ -358,13 +354,7 @@ const PhoneVerification = () => {
                             </motion.div>
                         )}
 
-                        {/* Skip Button */}
-                        <button
-                            onClick={handleSkip}
-                            className="w-full mt-4 py-2 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                        >
-                            Skip for now
-                        </button>
+
                     </>
                 )}
             </motion.div>

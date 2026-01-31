@@ -27,6 +27,11 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
         return <Navigate to="/login" replace />;
     }
 
+    // Force Phone Verification
+    if (user && (!user.phoneNumber || user.phoneNumber.trim() === '')) {
+        return <Navigate to="/verify-phone" replace />;
+    }
+
     const allowedRoles = ['admin', 'super_admin', 'finance', 'seller_admin'];
 
     if (adminOnly && !allowedRoles.includes(user.role)) {
