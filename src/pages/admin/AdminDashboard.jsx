@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom'; // Added Link
 import api from '../../services/api';
-import { useSocket } from '../../context/SocketContext';
+import { useAdminChat } from '../../context/AdminChatContext';
 import {
     BarChart,
     Bar,
@@ -22,7 +22,7 @@ import { useToast } from '../../context/ToastContext';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
-    const { socket } = useSocket();
+    const { socket } = useAdminChat();
     const { showToast } = useToast();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);

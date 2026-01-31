@@ -1,8 +1,12 @@
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+// In development, default to localhost. In production, default to relative path (assuming proxy/rewrite) if env var is missing.
+const defaultUrl = import.meta.env.DEV ? 'http://localhost:5001' : '';
+const envUrl = import.meta.env.VITE_API_URL || defaultUrl;
+const baseURL = envUrl;
+
 const api = axios.create({
-    baseURL: baseURL.endsWith('/api') ? baseURL : `${baseURL.replace(/\/$/, '')}/api`,
+    baseURL: baseURL.endsWith('/api') ? baseURL : (baseURL ? `${baseURL.replace(/\/$/, '')}/api` : '/api'),
     headers: {
         'Content-Type': 'application/json',
     },
