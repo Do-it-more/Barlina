@@ -10,18 +10,18 @@ import { Truck, RotateCcw, ShieldCheck, Award, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const categories = [
-    { name: 'New Arrivals', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', badge: 'New' },
-    { name: 'Silk Sarees', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', badge: 'Selling' },
-    { name: 'Bridal Collection', image: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', badge: 'Bridal' },
-    { name: 'Designer Blouses', image: 'https://images.unsplash.com/photo-1583391733981-8498f288a5e4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Lehengas', image: 'https://images.unsplash.com/photo-1583391733981-8498f288a5e4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Kurtis', image: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Salwar Suits', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Jewellery', image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Festive Wear', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Cotton Sarees', image: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Accessories', image: 'https://images.unsplash.com/photo-1611085583191-a3b181a88401?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-    { name: 'Wedding Collection', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
+    { name: 'New Arrivals', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=400&h=400&fit=crop', badge: 'New' }, // Woman in light blue suit (Verified)
+    { name: 'Silk Sarees', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400&h=400&fit=crop', badge: 'Selling' }, // Woman in Purple Saree (Verified)
+    { name: 'Bridal Collection', image: 'https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?w=400&h=400&fit=crop', badge: 'Bridal' }, // Indian Bride in Red/Gold (Verified)
+    { name: 'Designer Blouses', image: 'https://images.unsplash.com/photo-1518049362265-d5b2a6467637?w=400&h=400&fit=crop' }, // Close up of fabric/saree detail
+    { name: 'Lehengas', image: 'https://images.unsplash.com/photo-1585487000160-52c61aa01ce8?w=400&h=400&fit=crop' }, // Woman in Green/Gold traditional wear (Lehenga style)
+    { name: 'Kurtis', image: 'https://images.unsplash.com/photo-1616186083705-03f9e6d80d21?w=400&h=400&fit=crop' }, // Woman in modern ethnic top
+    { name: 'Salwar Suits', image: 'https://images.unsplash.com/photo-1520638531100-c02bea3238d7?w=400&h=400&fit=crop' }, // Woman in white ethnic outfit
+    { name: 'Jewellery', image: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=400&h=400&fit=crop' }, // Gold Necklace on mannequin
+    { name: 'Festive Wear', image: 'https://images.unsplash.com/photo-1512413914633-b5043f4041ea?w=400&h=400&fit=crop' }, // Rich Gold/Pink Saree detail
+    { name: 'Cotton Sarees', image: 'https://images.unsplash.com/photo-1632514480749-d04586df36a5?w=400&h=400&fit=crop' }, // Woman in Yellow Cotton Saree
+    { name: 'Accessories', image: 'https://images.unsplash.com/photo-1576403233156-654cb29796dc?w=400&h=400&fit=crop' }, // Bangles/Hands
+    { name: 'Wedding Collection', image: 'https://images.unsplash.com/photo-1601121141461-9f6644cb8911?w=400&h=400&fit=crop' }, // Jewellery/Wedding detail
 ];
 
 const features = [
@@ -66,39 +66,65 @@ const Home = () => {
                     <Hero />
                 </div>
 
-                {/* Categories Section - Redesigned for Mobile (and Desktop) */}
-                <section className="py-8 md:hidden bg-white dark:bg-slate-900">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-                        {/* Title Banner */}
-                        <div className="flex justify-center mb-8">
-                            <div className="relative bg-gradient-to-r from-red-600 to-indigo-900 text-white px-10 py-2 rounded-sm shadow-md transform -skew-x-12">
-                                <h2 className="text-xl md:text-2xl font-bold tracking-wider transform skew-x-12 uppercase" style={{ fontFamily: 'serif' }}>Top Categories</h2>
-                            </div>
+                {/* Trending Collections - Animated Marquee for Mobile */}
+                <section className="py-6 md:hidden overflow-hidden bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
+                    <div className="mb-4 px-4 flex justify-between items-end">
+                        <div>
+                            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 tracking-wider uppercase">Discover</span>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-none mt-1">Trending Now</h2>
                         </div>
+                        <div className="flex gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600/50"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600/30"></span>
+                        </div>
+                    </div>
 
-                        <div className="grid grid-cols-4 gap-3 md:gap-8">
-                            {categories.map((cat, idx) => (
-                                <Link key={idx} to={`/products?category=${cat.name}`} className="flex flex-col items-center group cursor-pointer">
-                                    <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-2">
-                                        <img
-                                            src={cat.image}
-                                            alt={cat.name}
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                        />
-                                        {cat.badge && (
-                                            <span className={`absolute top-0 left-0 text-[10px] text-white px-2 py-0.5 rounded-br-lg ${cat.badge === 'New' ? 'bg-red-500' : cat.badge === 'Selling' ? 'bg-indigo-600' : 'bg-pink-500'}`}>
-                                                {cat.badge}
-                                            </span>
-                                        )}
+                    {/* Infinite Marquee */}
+                    <div className="relative flex w-full">
+                        <div className="flex gap-4 animate-scroll whitespace-nowrap px-4 w-max hover:paused">
+                            {/* Duplicate list for infinite loop effect */}
+                            {[...categories, ...categories].slice(0, 8).map((cat, idx) => (
+                                <Link key={idx} to={`/products?category=${cat.name}`} className="relative group w-32 h-44 flex-shrink-0 rounded-2xl overflow-hidden shadow-md">
+                                    <img
+                                        // Use 3 verified images cyclically
+                                        src={idx % 3 === 0
+                                            ? 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400&h=600&fit=crop' // Purple Saree
+                                            : idx % 3 === 1
+                                                ? 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=400&h=600&fit=crop' // Blue Suit
+                                                : 'https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?w=400&h=600&fit=crop' // Bridal Red
+                                        }
+                                        alt={cat.name}
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent">
+                                        <div className="absolute bottom-3 left-3 text-white">
+                                            <p className="text-[10px] font-medium opacity-80 uppercase tracking-widest mb-0.5">Shop</p>
+                                            <p className="text-sm font-bold leading-tight">{cat.name}</p>
+                                        </div>
                                     </div>
-                                    <span className="text-[10px] md:text-sm font-medium text-center text-slate-700 dark:text-gray-300 leading-tight">
-                                        {cat.name}
-                                    </span>
+                                    {(idx === 0 || idx === 1) && (
+                                        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-indigo-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                            HOT
+                                        </div>
+                                    )}
                                 </Link>
                             ))}
                         </div>
                     </div>
+
+                    <style>{`
+                        @keyframes scroll {
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(-50%); }
+                        }
+                        .animate-scroll {
+                            animation: scroll 20s linear infinite;
+                        }
+                        .hover\\:paused:hover {
+                            animation-play-state: paused;
+                        }
+                    `}</style>
                 </section>
 
 
