@@ -400,7 +400,7 @@ const SellerDetailScreen = () => {
                             </h3>
                             <div className="space-y-3">
                                 <InfoRow label="Account Holder" value={seller.bankDetails?.holderName || 'Not Provided'} />
-                                <InfoRow label="Account Number" value={seller.bankDetails?.accountNumber ? `****${seller.bankDetails.accountNumber.slice(-4)}` : 'Not Provided'} />
+                                <InfoRow label="Account Number" value={seller.bankDetails?.accountNumber || 'Not Provided'} />
                                 <InfoRow label="IFSC" value={seller.bankDetails?.ifsc || 'Not Provided'} />
                                 <InfoRow label="Bank Name" value={seller.bankDetails?.bankName || 'Not Provided'} />
                             </div>

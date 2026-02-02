@@ -56,7 +56,7 @@ const AdminLayoutContent = () => {
     const [globalSearch, setGlobalSearch] = useState('');
     const [searchType, setSearchType] = useState('user'); // 'user', 'order', 'complaint'
     const [imageError, setImageError] = useState(false);
-    const [counts, setCounts] = useState({ complaints: 0, inquiries: 0 });
+    const [counts, setCounts] = useState({ complaints: 0, inquiries: 0, pendingSellers: 0 });
 
     useEffect(() => {
         const fetchCounts = async () => {
@@ -64,7 +64,8 @@ const AdminLayoutContent = () => {
                 const { data } = await api.get('/reports/dashboard');
                 setCounts({
                     complaints: data.openComplaintsCount || 0,
-                    inquiries: data.newInquiriesCount || 0
+                    inquiries: data.newInquiriesCount || 0,
+                    pendingSellers: data.pendingSellersCount || 0
                 });
             } catch (error) {
                 console.error("Failed to fetch notification counts", error);
@@ -82,6 +83,7 @@ const AdminLayoutContent = () => {
     const getNotificationCount = (path) => {
         if (path === '/admin/complaints') return counts.complaints;
         if (path === '/admin/contacts') return counts.inquiries;
+        if (path === '/admin/management/approvals') return counts.pendingSellers;
         return 0;
     };
 

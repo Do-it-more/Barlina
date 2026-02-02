@@ -46,6 +46,12 @@ const SellerDashboard = () => {
                 const { data } = await api.get('/sellers/dashboard/stats');
                 setStats(data);
 
+                // Redirect if pending verification
+                if (['PENDING_VERIFICATION', 'UNDER_REVIEW'].includes(data.profileStatus)) {
+                    navigate('/seller/onboarding');
+                    return;
+                }
+
                 // Set notifications from API response
                 if (data.notifications) {
                     setNotifications(data.notifications);

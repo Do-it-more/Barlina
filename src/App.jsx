@@ -28,6 +28,10 @@ import SellerDashboard from './pages/seller/SellerDashboard';
 import SellerProducts from './pages/seller/SellerProducts';
 import SellerAddProduct from './pages/seller/SellerAddProduct';
 import SellerOrders from './pages/seller/SellerOrders';
+import SellerProfile from './pages/seller/SellerProfile';
+import SellerKYC from './pages/seller/SellerKYC';
+import SellerBank from './pages/seller/SellerBank';
+import SellerSupport from './pages/seller/SellerSupport';
 
 // Finance Components
 import FinanceLayout from './pages/finance/FinanceLayout';
@@ -62,6 +66,9 @@ const ProductEditScreen = React.lazy(() => import('./pages/admin/ProductEditScre
 import TermsConditions from './pages/legal/TermsConditions';
 import Refunds from './pages/legal/Refunds';
 import ShippingPolicy from './pages/legal/ShippingPolicy';
+import SellerTerms from './pages/legal/SellerTerms';
+import SellerPrivacy from './pages/legal/SellerPrivacy';
+import MarketplaceGuidelines from './pages/legal/MarketplaceGuidelines';
 const OrderListScreen = React.lazy(() => import('./pages/admin/OrderListScreen'));
 const OrderDetailScreen = React.lazy(() => import('./pages/admin/OrderDetailScreen'));
 const UserListScreen = React.lazy(() => import('./pages/admin/UserListScreen'));
@@ -189,6 +196,9 @@ function App() {
                         <Route path="/terms-conditions" element={<TermsConditions />} />
                         <Route path="/returns" element={<Refunds />} />
                         <Route path="/shipping-policy" element={<ShippingPolicy />} />
+                        <Route path="/legal/seller-terms" element={<SellerTerms />} />
+                        <Route path="/legal/seller-privacy" element={<SellerPrivacy />} />
+                        <Route path="/legal/marketplace-guidelines" element={<MarketplaceGuidelines />} />
 
 
                         {/* Protected Routes */}
@@ -276,6 +286,10 @@ function App() {
                           <Route path="products/add" element={<SellerAddProduct />} />
                           <Route path="products/:id/edit" element={<SellerAddProduct />} />
                           <Route path="orders" element={<SellerOrders />} />
+                          <Route path="profile" element={<SellerProfile />} />
+                          <Route path="kyc" element={<SellerKYC />} />
+                          <Route path="bank" element={<SellerBank />} />
+                          <Route path="support" element={<SellerSupport />} />
                           <Route path="team-chat" element={
                             <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
                               <TeamChatScreen />

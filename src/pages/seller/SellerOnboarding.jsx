@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
 import api from '../../services/api';
 import {
     Store,
@@ -32,6 +33,80 @@ import {
     Info
 } from 'lucide-react';
 
+const FileUploadItem = ({ label, field, value, progress, onUpload, onRemove, accept = 'image/*,.pdf', required = false }) => {
+    const fileInputRef = React.useRef(null);
+
+    const handleChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            onUpload(field, file);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+                {label} {required && <span className="text-red-400">*</span>}
+            </label>
+            <div className={`relative border-2 border-dashed rounded-xl p-4 transition-all ${value
+                ? 'border-emerald-500 bg-emerald-500/10'
+                : 'border-slate-600 hover:border-violet-500 bg-slate-800/50'
+                }`}>
+                {value ? (
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-500/20 rounded-lg">
+                                <CheckCircle className="h-5 w-5 text-emerald-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-white">Document Uploaded</p>
+                                <p className="text-xs text-gray-400">Click to replace</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onRemove(field);
+                            }}
+                            className="p-1 rounded-lg hover:bg-red-500/20 text-red-400"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+                ) : (
+                    <label className="flex flex-col items-center cursor-pointer">
+                        {progress > 0 && progress < 100 ? (
+                            <div className="flex flex-col items-center gap-2">
+                                <Loader className="h-8 w-8 text-violet-400 animate-spin" />
+                                <p className="text-sm text-gray-400">Uploading... {progress}%</p>
+                            </div>
+                        ) : (
+                            <>
+                                <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                                <p className="text-sm text-gray-400">Click to upload or drag & drop</p>
+                                <p className="text-xs text-gray-500 mt-1">PNG, JPG, PDF up to 5MB</p>
+                            </>
+                        )}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept={accept}
+                            className="hidden"
+                            onChange={handleChange}
+                            disabled={progress > 0 && progress < 100}
+                        />
+                    </label>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const SellerOnboarding = () => {
     const navigate = useNavigate();
     const { showToast } = useToast();
@@ -50,11 +125,14 @@ const SellerOnboarding = () => {
         ownerName: user?.name || '',
         email: user?.email || '',
         phone: user?.phoneNumber || '',
+        phone: user?.phoneNumber || '',
         sellerType: 'INDIVIDUAL',
+        businessCategory: '',
 
         // Step 2: Tax & Legal
         pan: '',
         gstin: '',
+        iec: '',
 
         // Step 3: Address
         businessAddress: {
@@ -84,6 +162,8 @@ const SellerOnboarding = () => {
             chequeUrl: '',
             bankProofUrl: '',
             gstCertificateUrl: '',
+            proofOfOwnershipUrl: '',
+            businessCertificateUrl: '',
             sellerPhotoUrl: ''
         },
 
@@ -104,8 +184,12 @@ const SellerOnboarding = () => {
             const res = await api.get('/sellers/profile');
             if (res.data) {
                 setExistingSeller(res.data);
-                // Set current step based on onboarding progress
-                setCurrentStep(res.data.onboardingStep || 1);
+                // Set current step based on onboarding progress, but force 1 if rejected
+                if (res.data.status === 'REJECTED') {
+                    setCurrentStep(1);
+                } else {
+                    setCurrentStep(res.data.onboardingStep || 1);
+                }
                 // Pre-fill existing data
                 setFormData(prev => ({
                     ...prev,
@@ -114,8 +198,10 @@ const SellerOnboarding = () => {
                     email: res.data.email || '',
                     phone: res.data.phone || '',
                     sellerType: res.data.sellerType || 'INDIVIDUAL',
+                    businessCategory: res.data.businessCategory || '',
                     pan: res.data.pan || '',
                     gstin: res.data.gstin || '',
+                    iec: res.data.iec || '',
                     businessAddress: res.data.businessAddress || prev.businessAddress,
                     bankDetails: {
                         ...prev.bankDetails,
@@ -156,6 +242,43 @@ const SellerOnboarding = () => {
                 [field]: value
             }
         }));
+    };
+
+    const [fetchingBankDetails, setFetchingBankDetails] = useState(false);
+    const [ifscError, setIfscError] = useState('');
+
+    const fetchBankDetails = async (ifsc) => {
+        if (!ifsc || ifsc.length !== 11) return;
+
+        setFetchingBankDetails(true);
+        setIfscError(''); // Clear previous error
+        try {
+            const res = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
+            if (res.data) {
+                setFormData(prev => ({
+                    ...prev,
+                    bankDetails: {
+                        ...prev.bankDetails,
+                        bankName: res.data.BANK,
+                        branchName: res.data.BRANCH
+                    }
+                }));
+                showToast('Bank details fetched successfully', 'success');
+            }
+        } catch (error) {
+            console.error('Error fetching bank details:', error);
+            setIfscError('Invalid IFSC Code');
+            setFormData(prev => ({
+                ...prev,
+                bankDetails: {
+                    ...prev.bankDetails,
+                    bankName: '',
+                    branchName: ''
+                }
+            }));
+        } finally {
+            setFetchingBankDetails(false);
+        }
     };
 
     const handleFileUpload = async (field, file) => {
@@ -208,6 +331,10 @@ const SellerOnboarding = () => {
                 }
                 if (!/^[6-9]\d{9}$/.test(formData.phone)) {
                     showToast('Please enter a valid 10-digit mobile number', 'error');
+                    return false;
+                }
+                if (!formData.businessCategory) {
+                    showToast('Please select a business category', 'error');
                     return false;
                 }
                 return true;
@@ -288,14 +415,17 @@ const SellerOnboarding = () => {
                         ownerName: formData.ownerName,
                         email: formData.email,
                         phone: formData.phone,
-                        sellerType: formData.sellerType
+                        phone: formData.phone,
+                        sellerType: formData.sellerType,
+                        businessCategory: formData.businessCategory
                     };
                     break;
                 case 2:
                     endpoint = '/sellers/profile';
                     data = {
                         pan: formData.pan,
-                        gstin: formData.gstin
+                        gstin: formData.gstin,
+                        iec: formData.iec
                     };
                     break;
                 case 3:
@@ -362,7 +492,7 @@ const SellerOnboarding = () => {
         try {
             await api.post('/sellers/submit');
             showToast('Application submitted successfully! We will review your application within 2-3 business days.', 'success');
-            navigate('/seller/dashboard');
+            checkExistingStatus();
         } catch (error) {
             showToast(error.response?.data?.message || 'Failed to submit application', 'error');
         } finally {
@@ -370,78 +500,7 @@ const SellerOnboarding = () => {
         }
     };
 
-    // File Upload Component
-    const FileUploadField = ({ label, field, accept = 'image/*,.pdf', required = false }) => {
-        const [localKey, setLocalKey] = useState(0);
 
-        const handleChange = async (e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-                await handleFileUpload(field, file);
-                // Reset the input by changing key
-                setLocalKey(prev => prev + 1);
-            }
-        };
-
-        return (
-            <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-300">
-                    {label} {required && <span className="text-red-400">*</span>}
-                </label>
-                <div className={`relative border-2 border-dashed rounded-xl p-4 transition-all ${formData.kyc[field]
-                    ? 'border-emerald-500 bg-emerald-500/10'
-                    : 'border-slate-600 hover:border-violet-500 bg-slate-800/50'
-                    }`}>
-                    {formData.kyc[field] ? (
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-500/20 rounded-lg">
-                                    <CheckCircle className="h-5 w-5 text-emerald-400" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-white">Document Uploaded</p>
-                                    <p className="text-xs text-gray-400">Click to replace</p>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleNestedChange('kyc', field, '');
-                                }}
-                                className="p-1 rounded-lg hover:bg-red-500/20 text-red-400"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-                    ) : (
-                        <label className="flex flex-col items-center cursor-pointer">
-                            {uploadProgress[field] > 0 && uploadProgress[field] < 100 ? (
-                                <div className="flex flex-col items-center gap-2">
-                                    <Loader className="h-8 w-8 text-violet-400 animate-spin" />
-                                    <p className="text-sm text-gray-400">Uploading... {uploadProgress[field]}%</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                                    <p className="text-sm text-gray-400">Click to upload or drag & drop</p>
-                                    <p className="text-xs text-gray-500 mt-1">PNG, JPG, PDF up to 5MB</p>
-                                </>
-                            )}
-                            <input
-                                key={localKey}
-                                type="file"
-                                accept={accept}
-                                className="hidden"
-                                onChange={handleChange}
-                            />
-                        </label>
-                    )}
-                </div>
-            </div>
-        );
-    };
 
     if (checkingStatus) {
         return (
@@ -491,6 +550,30 @@ const SellerOnboarding = () => {
         return null;
     }
 
+    // Rejection Alert
+    const rejectionAlert = existingSeller && existingSeller.status === 'REJECTED' ? (
+        <div className="mb-8 p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-start gap-4">
+            <AlertCircle className="h-6 w-6 text-red-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+                <h3 className="text-lg font-semibold text-red-400 mb-1">Application Rejected</h3>
+                <p className="text-gray-300">{existingSeller.rejectionReason || 'Your application was declined. Please update your details and submit again.'}</p>
+                {existingSeller.adminNotes && (
+                    <p className="text-gray-400 text-sm mt-2 italic">Note: {existingSeller.adminNotes}</p>
+                )}
+            </div>
+            <button
+                onClick={() => {
+                    setExistingSeller(prev => ({ ...prev, status: 'DRAFT' }));
+                    setCurrentStep(1);
+                }}
+                className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition-colors"
+                title="Dismiss and Edit"
+            >
+                <X className="h-5 w-5" />
+            </button>
+        </div>
+    ) : null;
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-8 px-4">
             <div className="max-w-4xl mx-auto">
@@ -505,6 +588,8 @@ const SellerOnboarding = () => {
                     </h1>
                     <p className="text-gray-400 mt-2">Complete your seller profile to start selling</p>
                 </div>
+
+                {rejectionAlert}
 
                 {/* Progress Steps */}
                 <div className="mb-8">
@@ -651,6 +736,51 @@ const SellerOnboarding = () => {
                                         ))}
                                     </div>
                                 </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        Business Category <span className="text-red-400">*</span>
+                                    </label>
+                                    <select
+                                        value={['Electronics', 'Fashion', 'Home & Kitchen', 'Beauty & Personal Care', 'Books', 'Toys & Games', 'Sports & Fitness', 'Automotive', 'Grocery', 'Other'].includes(formData.businessCategory) ? formData.businessCategory : 'Other'}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (value === 'Other') {
+                                                handleInputChange('businessCategory', 'Other');
+                                            } else {
+                                                handleInputChange('businessCategory', value);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-700/50 border border-slate-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 text-white transition-all"
+                                    >
+                                        <option value="">Select Category</option>
+                                        <option value="Electronics">Electronics</option>
+                                        <option value="Fashion">Fashion</option>
+                                        <option value="Home & Kitchen">Home & Kitchen</option>
+                                        <option value="Beauty & Personal Care">Beauty & Personal Care</option>
+                                        <option value="Books">Books</option>
+                                        <option value="Toys & Games">Toys & Games</option>
+                                        <option value="Sports & Fitness">Sports & Fitness</option>
+                                        <option value="Automotive">Automotive</option>
+                                        <option value="Grocery">Grocery</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+
+                                    {(formData.businessCategory === 'Other' || !['Electronics', 'Fashion', 'Home & Kitchen', 'Beauty & Personal Care', 'Books', 'Toys & Games', 'Sports & Fitness', 'Automotive', 'Grocery', ''].includes(formData.businessCategory)) && (
+                                        <div className="mt-3">
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                Specify Category <span className="text-red-400">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.businessCategory === 'Other' ? '' : formData.businessCategory}
+                                                onChange={(e) => handleInputChange('businessCategory', e.target.value)}
+                                                className="w-full px-4 py-3 rounded-xl bg-slate-700/50 border border-slate-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 text-white transition-all"
+                                                placeholder="Enter your business category"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
@@ -688,7 +818,21 @@ const SellerOnboarding = () => {
                                                 placeholder="22AAAAA0000A1Z5"
                                             />
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">15-character GST Identification Number</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            IEC (Importer Exporter Code) <span className="text-gray-500">(Optional)</span>
+                                        </label>
+                                        <div className="relative">
+                                            <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={formData.iec || ''}
+                                                onChange={(e) => handleInputChange('iec', e.target.value.toUpperCase().slice(0, 10))}
+                                                className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-700/50 border border-slate-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 text-white uppercase transition-all"
+                                                placeholder="10-digit IEC Code"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -804,6 +948,65 @@ const SellerOnboarding = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            IFSC Code <span className="text-red-400">*</span>
+                                            {fetchingBankDetails && <span className="text-violet-400 ml-2 text-xs animate-pulse">Fetching details...</span>}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.bankDetails.ifsc}
+                                            onChange={(e) => {
+                                                const val = e.target.value.toUpperCase().slice(0, 11);
+
+                                                if (val.length === 0) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        bankDetails: {
+                                                            ...prev.bankDetails,
+                                                            ifsc: '',
+                                                            bankName: '',
+                                                            branchName: ''
+                                                        }
+                                                    }));
+                                                    setIfscError('');
+                                                } else {
+                                                    handleNestedChange('bankDetails', 'ifsc', val);
+                                                    if (val.length === 11) {
+                                                        fetchBankDetails(val);
+                                                    }
+                                                }
+                                            }}
+                                            className={`w-full px-4 py-3 rounded-xl bg-slate-700/50 border focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 text-white uppercase transition-all ${ifscError ? 'border-red-500' : 'border-slate-600'}`}
+                                            placeholder="e.g., HDFC0001234"
+                                        />
+                                        {ifscError && <p className="text-red-400 text-xs mt-1">{ifscError}</p>}
+                                    </div>
+                                    <div className="hidden md:block"></div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            Bank Name <span className="text-red-400">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.bankDetails.bankName}
+                                            readOnly
+                                            className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-gray-400 cursor-not-allowed"
+                                            placeholder="e.g., HDFC Bank"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Branch Name</label>
+                                        <input
+                                            type="text"
+                                            value={formData.bankDetails.branchName}
+                                            readOnly
+                                            className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-gray-400 cursor-not-allowed"
+                                            placeholder="Branch name"
+                                        />
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
                                             Account Holder Name <span className="text-red-400">*</span>
                                         </label>
                                         <input
@@ -814,18 +1017,7 @@ const SellerOnboarding = () => {
                                             placeholder="As per bank records"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Bank Name <span className="text-red-400">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.bankDetails.bankName}
-                                            onChange={(e) => handleNestedChange('bankDetails', 'bankName', e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl bg-slate-700/50 border border-slate-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 text-white transition-all"
-                                            placeholder="e.g., HDFC Bank"
-                                        />
-                                    </div>
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
                                             Account Number <span className="text-red-400">*</span>
@@ -864,28 +1056,6 @@ const SellerOnboarding = () => {
                                             placeholder="Re-enter account number"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            IFSC Code <span className="text-red-400">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.bankDetails.ifsc}
-                                            onChange={(e) => handleNestedChange('bankDetails', 'ifsc', e.target.value.toUpperCase().slice(0, 11))}
-                                            className="w-full px-4 py-3 rounded-xl bg-slate-700/50 border border-slate-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 text-white uppercase transition-all"
-                                            placeholder="e.g., HDFC0001234"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Branch Name</label>
-                                        <input
-                                            type="text"
-                                            value={formData.bankDetails.branchName}
-                                            onChange={(e) => handleNestedChange('bankDetails', 'branchName', e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl bg-slate-700/50 border border-slate-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 text-white transition-all"
-                                            placeholder="Branch name"
-                                        />
-                                    </div>
                                 </div>
                             </div>
                         )}
@@ -900,9 +1070,34 @@ const SellerOnboarding = () => {
                                         Identity Documents (Required)
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <FileUploadField label="PAN Card" field="panUrl" required />
-                                        <FileUploadField label="Aadhaar Card" field="aadhaarUrl" required />
-                                        <FileUploadField label="Seller Photo" field="sellerPhotoUrl" accept="image/*" required />
+                                        <FileUploadItem
+                                            label="PAN Card"
+                                            field="panUrl"
+                                            value={formData.kyc.panUrl}
+                                            progress={uploadProgress.panUrl}
+                                            onUpload={handleFileUpload}
+                                            onRemove={(f) => handleNestedChange('kyc', f, '')}
+                                            required
+                                        />
+                                        <FileUploadItem
+                                            label="Aadhaar Card"
+                                            field="aadhaarUrl"
+                                            value={formData.kyc.aadhaarUrl}
+                                            progress={uploadProgress.aadhaarUrl}
+                                            onUpload={handleFileUpload}
+                                            onRemove={(f) => handleNestedChange('kyc', f, '')}
+                                            required
+                                        />
+                                        <FileUploadItem
+                                            label="Seller Photo"
+                                            field="sellerPhotoUrl"
+                                            value={formData.kyc.sellerPhotoUrl}
+                                            progress={uploadProgress.sellerPhotoUrl}
+                                            onUpload={handleFileUpload}
+                                            onRemove={(f) => handleNestedChange('kyc', f, '')}
+                                            accept="image/*"
+                                            required
+                                        />
                                     </div>
                                 </div>
 
@@ -913,8 +1108,15 @@ const SellerOnboarding = () => {
                                         Bank Verification
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <FileUploadField label="Cancelled Cheque" field="chequeUrl" />
-                                        <FileUploadField label="Bank Statement / Passbook" field="bankProofUrl" />
+
+                                        <FileUploadItem
+                                            label="Bank Statement / Passbook"
+                                            field="bankProofUrl"
+                                            value={formData.kyc.bankProofUrl}
+                                            progress={uploadProgress.bankProofUrl}
+                                            onUpload={handleFileUpload}
+                                            onRemove={(f) => handleNestedChange('kyc', f, '')}
+                                        />
                                     </div>
                                 </div>
 
@@ -925,10 +1127,47 @@ const SellerOnboarding = () => {
                                         Address & Business Documents
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <FileUploadField label="Address Proof" field="addressProofUrl" />
-                                        <FileUploadField label="GST Certificate" field="gstCertificateUrl" />
+                                        <FileUploadItem
+                                            label="Address Proof"
+                                            field="addressProofUrl"
+                                            value={formData.kyc.addressProofUrl}
+                                            progress={uploadProgress.addressProofUrl}
+                                            onUpload={handleFileUpload}
+                                            onRemove={(f) => handleNestedChange('kyc', f, '')}
+                                        />
+                                        <FileUploadItem
+                                            label="GST Certificate"
+                                            field="gstCertificateUrl"
+                                            value={formData.kyc.gstCertificateUrl}
+                                            progress={uploadProgress.gstCertificateUrl}
+                                            onUpload={handleFileUpload}
+                                            onRemove={(f) => handleNestedChange('kyc', f, '')}
+                                        />
+                                        <FileUploadItem
+                                            label="Proof of Ownership (e.g., Electricity Bill)"
+                                            field="proofOfOwnershipUrl"
+                                            value={formData.kyc.proofOfOwnershipUrl}
+                                            progress={uploadProgress.proofOfOwnershipUrl}
+                                            onUpload={handleFileUpload}
+                                            onRemove={(f) => handleNestedChange('kyc', f, '')}
+                                        />
+                                        <FileUploadItem
+                                            label="Govt. Approval Certificate (e.g., Udyam)"
+                                            field="businessCertificateUrl"
+                                            value={formData.kyc.businessCertificateUrl}
+                                            progress={uploadProgress.businessCertificateUrl}
+                                            onUpload={handleFileUpload}
+                                            onRemove={(f) => handleNestedChange('kyc', f, '')}
+                                        />
                                         {formData.sellerType !== 'INDIVIDUAL' && (
-                                            <FileUploadField label="Business Registration Proof" field="businessProofUrl" />
+                                            <FileUploadItem
+                                                label="Business Registration Proof"
+                                                field="businessProofUrl"
+                                                value={formData.kyc.businessProofUrl}
+                                                progress={uploadProgress.businessProofUrl}
+                                                onUpload={handleFileUpload}
+                                                onRemove={(f) => handleNestedChange('kyc', f, '')}
+                                            />
                                         )}
                                     </div>
                                 </div>
@@ -1025,9 +1264,9 @@ const SellerOnboarding = () => {
                                             className="mt-1 rounded border-slate-600 bg-slate-700 text-violet-600 focus:ring-violet-500"
                                         />
                                         <span className="text-sm text-gray-300">
-                                            I agree to the <a href="#" className="text-violet-400 hover:underline">Seller Terms & Conditions</a>,
-                                            <a href="#" className="text-violet-400 hover:underline"> Privacy Policy</a>, and
-                                            <a href="#" className="text-violet-400 hover:underline"> Marketplace Guidelines</a>.
+                                            I agree to the <Link to="/legal/seller-terms" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">Seller Terms & Conditions</Link>,
+                                            <Link to="/legal/seller-privacy" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline"> Privacy Policy</Link>, and
+                                            <Link to="/legal/marketplace-guidelines" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline"> Marketplace Guidelines</Link>.
                                         </span>
                                     </label>
                                     <label className="flex items-start gap-3 cursor-pointer">
@@ -1083,8 +1322,8 @@ const SellerOnboarding = () => {
                         </button>
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

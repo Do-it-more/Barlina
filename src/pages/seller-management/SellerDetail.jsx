@@ -423,8 +423,8 @@ const SellerDetail = () => {
                                     <div className="flex justify-between">
                                         <span className="text-gray-500">Address</span>
                                         <span className="font-medium text-right">
-                                            {seller.address?.street}, {seller.address?.city}<br />
-                                            {seller.address?.state} - {seller.address?.pincode}
+                                            {seller.businessAddress?.street || ''}, {seller.businessAddress?.city || ''}<br />
+                                            {seller.businessAddress?.state || ''} {seller.businessAddress?.pincode ? `- ${seller.businessAddress.pincode}` : ''}
                                         </span>
                                     </div>
                                 </div>
@@ -443,7 +443,7 @@ const SellerDetail = () => {
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-500">Account Number</span>
-                                        <span className="font-medium">{seller.bankDetails?.accountNumber ? '****' + seller.bankDetails.accountNumber.slice(-4) : 'N/A'}</span>
+                                        <span className="font-medium">{seller.bankDetails?.accountNumber || 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-500">IFSC</span>

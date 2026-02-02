@@ -25,8 +25,8 @@ const NotificationDropdown = () => {
 
     useEffect(() => {
         fetchNotifications();
-        // Poll every 60 seconds
-        const interval = setInterval(fetchNotifications, 60000);
+        // Poll every 15 seconds
+        const interval = setInterval(fetchNotifications, 15000);
         return () => clearInterval(interval);
     }, []);
 
