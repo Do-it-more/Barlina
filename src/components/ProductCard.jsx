@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Star, Heart, Flame } from 'lucide-react';
+import { ShoppingCart, Star, Heart, Flame, Share2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import WishlistButton from './WishlistButton';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 
 // Simple cache to avoid multiple API calls for the same settings on a page with multiple cards
@@ -15,6 +16,7 @@ const ProductCard = React.memo(({ product }) => {
     const id = product.id || product._id;
     const { user } = useAuth();
     const { addToCart } = useCart();
+    const { showToast } = useToast();
     const [adding, setAdding] = React.useState(false);
     const navigate = useNavigate();
 
@@ -104,6 +106,34 @@ const ProductCard = React.memo(({ product }) => {
                     rounded={true}
                     className="absolute top-3 right-3 p-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm hover:bg-white dark:hover:bg-slate-900 z-10 text-gray-600 dark:text-gray-300"
                 />
+
+                {/* Quick Share Button */}
+                <button
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const shareUrl = `${window.location.origin}/product/${id}`;
+                        const shareTitle = product.name;
+                        const sharePrice = product.discountPrice > 0 && product.discountPrice < product.price
+                            ? `₹${product.discountPrice.toLocaleString()}`
+                            : `₹${product.price.toLocaleString()}`;
+
+                        if (navigator.share) {
+                            navigator.share({
+                                title: shareTitle,
+                                text: `Check out ${shareTitle} - ${sharePrice}!`,
+                                url: shareUrl,
+                            }).catch(() => { });
+                        } else {
+                            navigator.clipboard.writeText(shareUrl);
+                            showToast('Link copied!', 'success');
+                        }
+                    }}
+                    className="absolute top-3 right-14 p-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm hover:bg-white dark:hover:bg-slate-900 z-10 text-gray-600 dark:text-gray-300 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95"
+                    title="Share"
+                >
+                    <Share2 className="h-4 w-4" />
+                </button>
 
                 {product.discountPrice > 0 && product.discountPrice < product.price && (
                     <motion.div

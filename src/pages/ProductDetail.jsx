@@ -8,6 +8,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import WishlistButton from '../components/WishlistButton';
+import ShareButton from '../components/ShareButton';
 import { useToast } from '../context/ToastContext';
 import { Star, ShoppingCart, ShoppingBag, Minus, Plus, Heart, Truck, ShieldCheck, ArrowLeft, ArrowRight, Loader, Banknote, MapPin, AlertCircle, RotateCcw, Tag, Flame, Bell, X } from 'lucide-react';
 import RecentlyViewed from '../components/product/RecentlyViewed';
@@ -370,6 +371,10 @@ const ProductDetail = () => {
                                     productId={product._id}
                                     rounded={true}
                                     className="w-14 h-14 border border-gray-200 dark:border-slate-600 hover:border-red-200 text-gray-500 dark:text-gray-400"
+                                />
+                                <ShareButton
+                                    product={product}
+                                    className="border border-gray-200 dark:border-slate-600 hover:border-indigo-200"
                                 />
                             </div>
                         </div>
