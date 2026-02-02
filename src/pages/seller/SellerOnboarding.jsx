@@ -414,7 +414,6 @@ const SellerOnboarding = () => {
                         ownerName: formData.ownerName,
                         email: formData.email,
                         phone: formData.phone,
-                        phone: formData.phone,
                         sellerType: formData.sellerType,
                         businessCategory: formData.businessCategory
                     };
