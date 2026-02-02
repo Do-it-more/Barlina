@@ -40,7 +40,7 @@ const Home = () => {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const { data } = await api.get('/products/top');
+                const { data } = await api.get(`/products/top?t=${new Date().getTime()}`);
                 setProducts(data);
             } catch (error) {
                 console.error("Failed to fetch featured products", error);
