@@ -125,7 +125,6 @@ const SellerOnboarding = () => {
         ownerName: user?.name || '',
         email: user?.email || '',
         phone: user?.phoneNumber || '',
-        phone: user?.phoneNumber || '',
         sellerType: 'INDIVIDUAL',
         businessCategory: '',
 
