@@ -103,8 +103,19 @@ const SellerAddProduct = () => {
 
     const fetchCategories = async () => {
         try {
-            const { data } = await api.get('/categories');
-            setCategories(data);
+            const [categoriesRes, sellerRes] = await Promise.all([
+                api.get('/categories'),
+                api.get('/sellers/profile')
+            ]);
+            setCategories(categoriesRes.data);
+
+            // Set default category from seller's business category if not in edit mode
+            if (!id && sellerRes.data?.businessCategory) {
+                setProduct(prev => ({
+                    ...prev,
+                    category: prev.category || sellerRes.data.businessCategory
+                }));
+            }
         } catch (error) {
             console.error('Failed to fetch categories:', error);
         }
@@ -398,19 +409,23 @@ const SellerAddProduct = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-2">Category *</label>
-                                <select
+                                <input
+                                    type="text"
                                     name="category"
                                     value={product.category}
                                     onChange={handleChange}
-
+                                    list="category-suggestions"
+                                    placeholder="Enter or select category"
                                     disabled={isLiveEditing}
                                     className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600 ${isLiveEditing ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
-                                >
-                                    <option value="">Select category</option>
+                                />
+                                <datalist id="category-suggestions">
                                     {categories.map(cat => (
-                                        <option key={cat._id} value={cat.name}>{cat.name}</option>
+                                        <option key={cat._id} value={cat.name} />
                                     ))}
-                                </select>
+                                    <option value="Other" />
+                                </datalist>
+                                <p className="text-xs text-gray-500 mt-1">Select from suggestions or type your own</p>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-2">Brand *</label>
