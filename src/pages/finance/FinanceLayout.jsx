@@ -25,6 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { useAdminChat, AdminChatProvider } from '../../context/AdminChatContext';
+import NotificationDropdown from '../../components/common/NotificationDropdown';
 
 const FinanceLayoutContent = () => {
     const { logout, user } = useAuth();
@@ -146,9 +147,7 @@ const FinanceLayoutContent = () => {
                         <button onClick={toggleTheme} className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
                             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                         </button>
-                        <button className="relative p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-                            <Bell className="h-5 w-5" />
-                        </button>
+                        <NotificationDropdown />
                         <div className="flex items-center gap-3 pl-4 border-l border-gray-100 dark:border-slate-700">
                             <div className="text-right hidden sm:block">
                                 <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.name}</p>

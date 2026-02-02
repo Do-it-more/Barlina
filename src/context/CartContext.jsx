@@ -2,11 +2,58 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
-import { useNavigate } from 'react-router-dom';
+import confetti from 'canvas-confetti';
 
 const CartContext = createContext();
 
 export const useCart = () => useContext(CartContext);
+
+// Helper function to check if device is mobile
+const isMobileDevice = () => {
+    return window.matchMedia('(max-width: 768px)').matches;
+};
+
+// Mobile confetti burst effect
+const triggerMobileConfetti = () => {
+    if (!isMobileDevice()) return;
+
+    // Create a fun, short confetti burst from the bottom of the screen
+    const duration = 1500;
+    const end = Date.now() + duration;
+
+    const colors = ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'];
+
+    (function frame() {
+        confetti({
+            particleCount: 3,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0, y: 0.9 },
+            colors: colors,
+            shapes: ['circle', 'square'],
+            scalar: 0.8,
+            gravity: 1.2,
+            drift: 0,
+            ticks: 150
+        });
+        confetti({
+            particleCount: 3,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1, y: 0.9 },
+            colors: colors,
+            shapes: ['circle', 'square'],
+            scalar: 0.8,
+            gravity: 1.2,
+            drift: 0,
+            ticks: 150
+        });
+
+        if (Date.now() < end) {
+            requestAnimationFrame(frame);
+        }
+    }());
+};
 
 export const CartProvider = ({ children }) => {
     const [cart, setCart] = useState([]);
@@ -59,6 +106,10 @@ export const CartProvider = ({ children }) => {
             });
             setCart(data.items);
             showToast("Item added to cart successfully", "success");
+
+            // Trigger confetti on mobile devices 🎉
+            triggerMobileConfetti();
+
             return true;
         } catch (error) {
             console.error(error);

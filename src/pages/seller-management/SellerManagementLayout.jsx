@@ -18,6 +18,7 @@ import {
     Shield,
     MessageSquare
 } from 'lucide-react';
+import NotificationDropdown from '../../components/common/NotificationDropdown';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { AdminChatProvider } from '../../context/AdminChatContext';
@@ -139,10 +140,7 @@ const SellerManagementLayoutContent = () => {
                     </div>
 
                     <div className="ml-auto flex items-center gap-4">
-                        <button className="relative p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-                            <Bell className="h-5 w-5" />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full"></span>
-                        </button>
+                        <NotificationDropdown />
                         <div className="flex items-center gap-3 pl-4 border-l border-gray-100 dark:border-slate-700">
                             <div className="text-right hidden sm:block">
                                 <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.name}</p>
