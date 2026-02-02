@@ -111,7 +111,7 @@ const ProductDetail = () => {
 
     const getImageUrl = useCallback((path) => {
         if (!path) return 'https://via.placeholder.com/300';
-        if (path.startsWith('http')) return path;
+        if (path.startsWith('http') || path.startsWith('data:')) return path;
         const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/api\/?$/, '');
         return `${apiBase}${path}`;
     }, []);

@@ -210,24 +210,17 @@ const SellerAddProduct = () => {
         // Draw video frame to canvas
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Convert to Blob/File
-        canvas.toBlob(async (blob) => {
-            if (!blob) return;
-            const file = new File([blob], `capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        // Get Data URL (Base64)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7); // 0.7 Quality to keep size smaller
 
-            // Upload
-            const url = await uploadFile(file);
-            if (url) {
-                if (cameraTarget === 'main') {
-                    setProduct(prev => ({ ...prev, image: url }));
-                    showToast('Image captured successfully', 'success');
-                } else if (cameraTarget === 'additional') {
-                    setProduct(prev => ({ ...prev, images: [...prev.images, url] }));
-                    showToast('Image captured successfully', 'success');
-                }
-                setShowCamera(false);
-            }
-        }, 'image/jpeg', 0.8);
+        if (cameraTarget === 'main') {
+            setProduct(prev => ({ ...prev, image: dataUrl }));
+            showToast('Image captured successfully', 'success');
+        } else if (cameraTarget === 'additional') {
+            setProduct(prev => ({ ...prev, images: [...prev.images, dataUrl] }));
+            showToast('Image captured successfully', 'success');
+        }
+        setShowCamera(false);
     };
 
     const removeAdditionalImage = (index) => {
