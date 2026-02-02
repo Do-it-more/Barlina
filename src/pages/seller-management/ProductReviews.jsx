@@ -152,25 +152,25 @@ const ProductReviews = () => {
             setSelectedProduct(null);
         } catch (error) {
             const status = error.response?.status;
-            const message = error.response?.data?.message || 'Approval failed';
+            const message = error.response?.data?.message || error.message || 'Approval failed';
 
-            // If it's a 400 Bad Request, it might be a secondary failure (like email)
-            // but the primary action (approval) succeeded.
-            if (status === 400) {
-                console.warn("Approval returned 400, checking status...");
+            console.warn("Approval Error Details:", { status, message, response: error.response });
+
+            // Handle potential success-but-error cases (e.g. Email failure masking as 400/500, or generic Bad Request)
+            if (status == 400 || message === 'Bad Request' || message.toLowerCase().includes('bad request')) {
                 // Optimistically assume success or warn user
-                showToast('Product likely approved, but with warnings (e.g. notification failed)', 'warning');
-                fetchProducts();
-                fetchStats();
-                setSelectedProduct(null);
+                showToast('Product updated. Please verify status.', 'info');
             } else if (message.includes('Only products under review')) {
                 showToast('Product is no longer pending review', 'info');
-                setSelectedProduct(null);
-                fetchProducts();
-                fetchStats();
             } else {
                 showToast(message, 'error');
             }
+
+            // Always refresh to show truth
+            // Always refresh to show truth
+            setSelectedProduct(null);
+            fetchProducts();
+            fetchStats();
         } finally {
             setActionLoading(false);
         }
