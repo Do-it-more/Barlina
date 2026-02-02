@@ -30,7 +30,8 @@ import {
     Info,
     Lock,
     ChevronRight,
-    MessageSquare
+    MessageSquare,
+    X
 } from 'lucide-react';
 
 const SellerDashboard = () => {
@@ -39,6 +40,7 @@ const SellerDashboard = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [notifications, setNotifications] = useState([]);
+    const [showAdminMsg, setShowAdminMsg] = useState(true);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -139,15 +141,22 @@ const SellerDashboard = () => {
             </div>
 
             {/* Admin Message Banner */}
-            {stats?.adminNotes && (
-                <div className="bg-blue-600/10 border border-blue-600/20 rounded-xl p-4 flex items-start gap-4 mx-1">
+            {stats?.adminNotes && showAdminMsg && (
+                <div className="bg-blue-600/10 border border-blue-600/20 rounded-xl p-4 flex items-start gap-4 mx-1 relative group">
                     <div className="p-2 bg-blue-600/20 rounded-lg shrink-0">
                         <MessageSquare className="h-5 w-5 text-blue-500" />
                     </div>
-                    <div>
+                    <div className="flex-1 pr-8">
                         <h3 className="font-bold text-blue-500 mb-1">Message from Admin</h3>
                         <p className="text-gray-300 text-sm whitespace-pre-wrap">{stats.adminNotes}</p>
                     </div>
+                    <button
+                        onClick={() => setShowAdminMsg(false)}
+                        className="absolute top-4 right-4 p-1 hover:bg-blue-600/20 rounded-full text-blue-400 hover:text-blue-300 transition-colors"
+                        title="Dismiss"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
                 </div>
             )}
 

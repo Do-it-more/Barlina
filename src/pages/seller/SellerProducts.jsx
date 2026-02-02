@@ -293,15 +293,7 @@ const SellerProducts = () => {
                                     )}
                                     <div className="flex-1"></div> {/* Spacer */}
 
-                                    {product.listingStatus !== 'DELETE_REQUESTED' && (
-                                        <button
-                                            onClick={() => handleDelete(product._id)}
-                                            className="flex items-center justify-center gap-1 px-3 py-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 text-red-600 rounded-lg text-sm font-medium transition-colors ml-2"
-                                            title="Delete Product"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    )}
+
                                 </div>
                             </div>
                         </div>
@@ -334,34 +326,7 @@ const SellerProducts = () => {
                     </div>
                 )
             }
-            {/* Delete Confirmation Modal */}
-            {showDeleteModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100 dark:border-slate-700 animate-in fade-in zoom-in duration-200">
-                        <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Trash2 className="h-6 w-6" />
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Delete this product?</h3>
-                        <p className="text-gray-500 mb-6 text-sm dark:text-gray-400">
-                            Are you sure you want to delete this product? This action cannot be undone.
-                        </p>
-                        <div className="flex gap-3 justify-center">
-                            <button
-                                onClick={() => setShowDeleteModal(null)}
-                                className="px-5 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-slate-700 dark:text-gray-300"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={confirmDelete}
-                                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors shadow-lg shadow-red-500/30"
-                            >
-                                Delete Product
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Modal removed */}
         </div >
     );
 };

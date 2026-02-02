@@ -48,6 +48,7 @@ import SellerDetail from './pages/seller-management/SellerDetail';
 import ProductReviews from './pages/seller-management/ProductReviews';
 import ActiveSellers from './pages/seller-management/ActiveSellers';
 import AuditLogs from './pages/seller-management/AuditLogs';
+import AdminSupportTickets from './pages/seller-management/SupportTickets';
 
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -334,6 +335,7 @@ function App() {
                           <Route path="active-sellers" element={<ActiveSellers />} />
                           <Route path="all-products" element={<ProductReviews />} />
                           <Route path="audit-logs" element={<AuditLogs />} />
+                          <Route path="support-tickets" element={<AdminSupportTickets />} />
                           <Route path="team-chat" element={
                             <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
                               <TeamChatScreen />

@@ -42,7 +42,9 @@ const SellerManagementLayoutContent = () => {
         { path: '/seller-management/product-reviews', icon: FileCheck, label: 'Product Reviews' },
 
         { path: '/seller-management/all-products', icon: Package, label: 'All Products' },
-        { path: '/seller-management/team-chat', icon: MessageSquare, label: 'Team Chat' },
+        { path: '/seller-management/support-tickets', icon: MessageSquare, label: 'Support Tickets' },
+        // Only Super Admin sees Team Chat in this view, Seller Admin doesn't need it unless specified
+        ...(user?.role === 'super_admin' ? [{ path: '/seller-management/team-chat', icon: MessageSquare, label: 'Team Chat' }] : []),
     ];
 
     const isActiveRoute = (path) => {

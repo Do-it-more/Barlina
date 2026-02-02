@@ -146,33 +146,6 @@ const SellerProfile = () => {
                                 {seller.status?.replace(/_/g, ' ')}
                             </span>
                         )}
-                        {!isEditing ? (
-                            <button
-                                onClick={() => setIsEditing(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors"
-                            >
-                                <Edit3 className="w-4 h-4" />
-                                Edit Profile
-                            </button>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setIsEditing(false)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-                                >
-                                    <X className="w-4 h-4" />
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={saving}
-                                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                    {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                    Save Changes
-                                </button>
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -193,8 +166,9 @@ const SellerProfile = () => {
                                 <input
                                     type="text"
                                     value={formData.businessName}
+                                    disabled={true}
                                     onChange={(e) => handleInputChange('businessName', e.target.value)}
-                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500"
+                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 cursor-not-allowed focus:ring-0"
                                 />
                             ) : (
                                 <p className="text-gray-900 dark:text-white font-medium">{formData.businessName || '-'}</p>
@@ -208,8 +182,9 @@ const SellerProfile = () => {
                                 <input
                                     type="text"
                                     value={formData.ownerName}
+                                    disabled={true}
                                     onChange={(e) => handleInputChange('ownerName', e.target.value)}
-                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500"
+                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 cursor-not-allowed focus:ring-0"
                                 />
                             ) : (
                                 <p className="text-gray-900 dark:text-white font-medium">{formData.ownerName || '-'}</p>
@@ -223,8 +198,9 @@ const SellerProfile = () => {
                                 <input
                                     type="email"
                                     value={formData.email}
+                                    disabled={true}
                                     onChange={(e) => handleInputChange('email', e.target.value)}
-                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500"
+                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 cursor-not-allowed focus:ring-0"
                                 />
                             ) : (
                                 <p className="text-gray-900 dark:text-white">{formData.email || '-'}</p>
@@ -238,8 +214,9 @@ const SellerProfile = () => {
                                 <input
                                     type="tel"
                                     value={formData.phone}
+                                    disabled={true}
                                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500"
+                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 cursor-not-allowed focus:ring-0"
                                 />
                             ) : (
                                 <p className="text-gray-900 dark:text-white">{formData.phone || '-'}</p>
@@ -275,8 +252,9 @@ const SellerProfile = () => {
                                 <input
                                     type="text"
                                     value={formData.businessAddress.street}
+                                    disabled={true}
                                     onChange={(e) => handleAddressChange('street', e.target.value)}
-                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500"
+                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 cursor-not-allowed focus:ring-0"
                                 />
                             ) : (
                                 <p className="text-gray-900 dark:text-white">{formData.businessAddress.street || '-'}</p>
@@ -288,8 +266,9 @@ const SellerProfile = () => {
                                 <input
                                     type="text"
                                     value={formData.businessAddress.city}
+                                    disabled={true}
                                     onChange={(e) => handleAddressChange('city', e.target.value)}
-                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500"
+                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 cursor-not-allowed focus:ring-0"
                                 />
                             ) : (
                                 <p className="text-gray-900 dark:text-white">{formData.businessAddress.city || '-'}</p>
@@ -301,8 +280,9 @@ const SellerProfile = () => {
                                 <input
                                     type="text"
                                     value={formData.businessAddress.state}
+                                    disabled={true}
                                     onChange={(e) => handleAddressChange('state', e.target.value)}
-                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500"
+                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 cursor-not-allowed focus:ring-0"
                                 />
                             ) : (
                                 <p className="text-gray-900 dark:text-white">{formData.businessAddress.state || '-'}</p>
@@ -314,8 +294,9 @@ const SellerProfile = () => {
                                 <input
                                     type="text"
                                     value={formData.businessAddress.pincode}
+                                    disabled={true}
                                     onChange={(e) => handleAddressChange('pincode', e.target.value)}
-                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500"
+                                    className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 cursor-not-allowed focus:ring-0"
                                 />
                             ) : (
                                 <p className="text-gray-900 dark:text-white">{formData.businessAddress.pincode || '-'}</p>

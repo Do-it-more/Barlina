@@ -13,7 +13,8 @@ import {
     HelpCircle,
     Package,
     ShoppingBag,
-    MessageSquare
+    MessageSquare,
+    Settings
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -27,6 +28,7 @@ const SellerLayout = () => {
     const { getTotalUnreadCount } = useAdminChat(); // Get unread count
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
     const [pendingOrderCount, setPendingOrderCount] = useState(0);
     const [lastSeenCount, setLastSeenCount] = useState(
         parseInt(localStorage.getItem('seller_last_seen_pending_count') || '0', 10)
@@ -65,14 +67,28 @@ const SellerLayout = () => {
 
     const notificationCount = Math.max(0, pendingOrderCount - lastSeenCount);
 
+    const [sellerProfile, setSellerProfile] = useState(null);
+
+    useEffect(() => {
+        const fetchSellerProfile = async () => {
+            try {
+                const { data } = await api.get('/sellers/profile');
+                setSellerProfile(data);
+            } catch (error) {
+                console.error('Failed to fetch seller profile', error);
+            }
+        };
+        fetchSellerProfile();
+    }, []);
+
     const navItems = [
         { path: '/seller/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { path: '/seller/profile', icon: User, label: 'Business Profile' },
         { path: '/seller/kyc', icon: ShieldCheck, label: 'KYC & Compliance' },
         { path: '/seller/bank', icon: CreditCard, label: 'Bank & Settlements' },
-        { path: '/seller/products', icon: Package, label: 'Products', disabled: false }, // Future
-        { path: '/seller/orders', icon: ShoppingBag, label: 'Orders', disabled: false }, // Future
-        { path: '/seller/team-chat', icon: MessageSquare, label: 'Team Chat' },
+        { path: '/seller/products', icon: Package, label: 'Products', disabled: false },
+        { path: '/seller/orders', icon: ShoppingBag, label: 'Orders', disabled: false },
+        ...(sellerProfile?.isChatEnabled === true ? [{ path: '/seller/team-chat', icon: MessageSquare, label: 'Team Chat' }] : []),
         { path: '/seller/support', icon: HelpCircle, label: 'Seller Support' },
     ];
 
@@ -153,14 +169,59 @@ const SellerLayout = () => {
 
                     <div className="ml-auto flex items-center gap-4">
                         <NotificationDropdown />
-                        <div className="flex items-center gap-3 pl-4 border-l border-gray-100 dark:border-slate-700">
-                            <div className="text-right hidden sm:block">
-                                <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.name}</p>
-                                <p className="text-xs text-gray-500">Seller ID: {user?._id?.slice(-6).toUpperCase()}</p>
-                            </div>
-                            <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold">
-                                {user?.name?.charAt(0)}
-                            </div>
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                                className="flex items-center gap-3 pl-4 border-l border-gray-100 dark:border-slate-700 focus:outline-none"
+                            >
+                                <div className="text-right hidden sm:block">
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.name}</p>
+                                    <p className="text-xs text-gray-500">Seller ID: {user?._id?.slice(-6).toUpperCase()}</p>
+                                </div>
+                                {user?.profilePhoto ? (
+                                    <img
+                                        src={user.profilePhoto}
+                                        alt={user.name}
+                                        className="w-9 h-9 rounded-full object-cover border border-gray-200 dark:border-slate-600"
+                                    />
+                                ) : (
+                                    <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold">
+                                        {user?.name?.charAt(0)}
+                                    </div>
+                                )}
+                            </button>
+
+                            {/* Profile Dropdown */}
+                            {isProfileMenuOpen && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setIsProfileMenuOpen(false)}
+                                    />
+                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700 md:hidden">
+                                            <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.name}</p>
+                                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                                        </div>
+                                        <Link
+                                            to="/seller/profile"
+                                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700"
+                                            onClick={() => setIsProfileMenuOpen(false)}
+                                        >
+                                            <User className="h-4 w-4" />
+                                            Business Profile
+                                        </Link>
+                                        <div className="border-t border-gray-100 dark:border-slate-700 my-1"></div>
+                                        <button
+                                            onClick={logout}
+                                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        >
+                                            <LogOut className="h-4 w-4" />
+                                            Log Out
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </header>

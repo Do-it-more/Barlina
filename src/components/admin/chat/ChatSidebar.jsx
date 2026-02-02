@@ -32,9 +32,10 @@ const ChatSidebar = () => {
     const [groupName, setGroupName] = useState('');
     const [groupStep, setGroupStep] = useState(1); // 1: Select Members, 2: Name Group
 
-    const filteredChats = chats.filter(chat =>
-        chat.chatName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredChats = (chats || []).filter(chat => {
+        const name = chat.chatName || 'Unknown User';
+        return name.toLowerCase().includes((searchTerm || '').toLowerCase());
+    });
 
     const location = useLocation();
 
@@ -254,7 +255,7 @@ const ChatSidebar = () => {
                                 <div className="flex justify-between items-center mb-1">
                                     <div className="flex items-center gap-2 min-w-0 flex-1">
                                         <h3 className="font-semibold text-slate-800 dark:text-gray-200 truncate text-[15px] md:text-sm">
-                                            {chat.chatName}
+                                            {chat.chatName || 'Unknown User'}
                                         </h3>
                                         {chat.type === 'group' ? (
                                             <span className="text-[10px] px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full">

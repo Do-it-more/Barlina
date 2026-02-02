@@ -328,6 +328,32 @@ const SellerDetail = () => {
                 </div>
             )}
 
+            {/* Chat Toggle for Super Admin */}
+            {isSuperAdmin && (
+                <div className="flex flex-wrap gap-3">
+                    <button
+                        onClick={async () => {
+                            setActionLoading(true);
+                            try {
+                                await api.put(`/admin/sellers/${id}/chat-access`, {
+                                    isChatEnabled: !seller.isChatEnabled
+                                });
+                                showToast(`Chat access ${!seller.isChatEnabled ? 'enabled' : 'disabled'}`, 'success');
+                                fetchSeller();
+                            } catch (error) {
+                                showToast('Failed to toggle chat access', 'error');
+                            } finally {
+                                setActionLoading(false);
+                            }
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2 ${seller.isChatEnabled ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-lg font-medium transition-colors`}
+                    >
+                        <MessageSquare className="h-4 w-4" />
+                        {seller.isChatEnabled ? 'Disable Chat' : 'Enable Chat'}
+                    </button>
+                </div>
+            )}
+
             {/* Tabs */}
             <div className="border-b border-gray-200 dark:border-slate-700">
                 <nav className="flex space-x-8">

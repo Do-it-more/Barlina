@@ -257,7 +257,7 @@ const ProductReviews = () => {
         if (!showBlockModal) return;
         setActionLoading(true);
         try {
-            await api.put(`/admin/product-reviews/${showBlockModal}/block`, { reason: 'Policy violation' });
+            await api.put(`/admin/product-reviews/${showBlockModal}/block-fix`, { reason: 'Policy violation' });
             showToast('Product blocked', 'success');
             fetchProducts();
             fetchStats();
@@ -537,7 +537,9 @@ const ProductReviews = () => {
 
                                 <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
                                     <Store className="h-4 w-4" />
-                                    <span className="truncate">{product.seller?.businessName || 'Unknown Seller'}</span>
+                                    <span className="truncate">
+                                        {product.seller?.businessName || (product.ownerType === 'PLATFORM' ? 'Platform' : 'Unknown Seller')}
+                                    </span>
                                 </div>
 
                                 <div className="flex items-center justify-between mt-3">
@@ -688,7 +690,9 @@ const ProductReviews = () => {
                                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">{selectedProduct.name}</h2>
                                 <div className="flex items-center gap-2 mt-2">
                                     {getStatusBadge(selectedProduct.listingStatus)}
-                                    <span className="text-sm text-gray-500">by {selectedProduct.seller?.businessName}</span>
+                                    <span className="text-sm text-gray-500">
+                                        by {selectedProduct.seller?.businessName || (selectedProduct.ownerType === 'PLATFORM' ? 'Platform' : 'Unknown Seller')}
+                                    </span>
                                 </div>
                             </div>
 
