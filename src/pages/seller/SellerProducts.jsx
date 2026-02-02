@@ -93,7 +93,8 @@ const SellerProducts = () => {
             UNDER_REVIEW: { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Clock, label: 'Under Review' },
             APPROVED: { color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle, label: 'Live' },
             REJECTED: { color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', icon: XCircle, label: 'Rejected' },
-            BLOCKED: { color: 'bg-red-200 text-red-800 dark:bg-red-900/50 dark:text-red-300', icon: AlertTriangle, label: 'Blocked' }
+            BLOCKED: { color: 'bg-red-200 text-red-800 dark:bg-red-900/50 dark:text-red-300', icon: AlertTriangle, label: 'Blocked' },
+            DELETE_REQUESTED: { color: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400', icon: Trash2, label: 'Deletion Requested' }
         };
 
         const config = statusConfig[status] || statusConfig.DRAFT;
@@ -167,6 +168,7 @@ const SellerProducts = () => {
                         <option value="UNDER_REVIEW">Under Review</option>
                         <option value="APPROVED">Live</option>
                         <option value="REJECTED">Rejected</option>
+                        <option value="DELETE_REQUESTED">Deletion Requested</option>
                     </select>
                 </div>
             </div>
@@ -291,13 +293,15 @@ const SellerProducts = () => {
                                     )}
                                     <div className="flex-1"></div> {/* Spacer */}
 
-                                    <button
-                                        onClick={() => handleDelete(product._id)}
-                                        className="flex items-center justify-center gap-1 px-3 py-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 text-red-600 rounded-lg text-sm font-medium transition-colors ml-2"
-                                        title="Delete Product"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    {product.listingStatus !== 'DELETE_REQUESTED' && (
+                                        <button
+                                            onClick={() => handleDelete(product._id)}
+                                            className="flex items-center justify-center gap-1 px-3 py-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 text-red-600 rounded-lg text-sm font-medium transition-colors ml-2"
+                                            title="Delete Product"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

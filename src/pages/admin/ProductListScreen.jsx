@@ -266,6 +266,11 @@ const ProductListScreen = () => {
                                                 Platform
                                             </span>
                                         )}
+                                        {product.listingStatus === 'DELETE_REQUESTED' && (
+                                            <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                                Deletion Requested
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="p-4 font-medium text-slate-900 dark:text-white">
                                         {product.discountPrice > 0 ? (
@@ -379,6 +384,11 @@ const ProductListScreen = () => {
                                     </div>
                                 ) : (
                                     <span className="text-[10px] font-medium text-gray-500 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">Platform</span>
+                                )}
+                                {product.listingStatus === 'DELETE_REQUESTED' && (
+                                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                        Deletion Requested
+                                    </span>
                                 )}
                             </div>
 
