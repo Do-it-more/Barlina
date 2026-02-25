@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
 import api from '../services/api';
-import { Filter, SlidersHorizontal, ChevronDown, Loader, Star } from 'lucide-react';
+import { Filter, SlidersHorizontal, ChevronDown, Loader, Star, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ProductList = () => {
@@ -15,25 +15,41 @@ const ProductList = () => {
 
     const [products, setProducts] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState([]);
-    const [sortOption, setSortOption] = useState('newest');
+    const [sortOption, setSortOption] = useState('bestSelling');
     const [priceRange, setPriceRange] = useState([0, 5000]);
     const [selectedCategories, setSelectedCategories] = useState((category || queryCategory) ? [(category || queryCategory).toLowerCase()] : []);
     const [minRating, setMinRating] = useState(0);
     const [onlyInStock, setOnlyInStock] = useState(false);
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+    const [isSidebarVisible, setIsSidebarVisible] = useState(false);
     const [loading, setLoading] = useState(true);
     const [pageNumber, setPageNumber] = useState(1);
     const [pages, setPages] = useState(1);
+    const [categoriesList, setCategoriesList] = useState([]);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const { data } = await api.get('/categories');
+                setCategoriesList(data);
+            } catch (error) {
+                console.error("Failed to fetch categories", error);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     useEffect(() => {
         const fetchProducts = async () => {
             setLoading(true);
             try {
-                const { data } = await api.get(`/products?keyword=${keyword}&page=${pageNumber}`);
+                const categoryParam = selectedCategories.length > 0 ? selectedCategories.join(',') : '';
+                const { data } = await api.get(`/products?keyword=${keyword}&page=${pageNumber}&category=${categoryParam}&minPrice=0&maxPrice=${priceRange[1]}&rating=${minRating}&onlyInStock=${onlyInStock}&sort=${sortOption}&limit=8`);
 
                 let fetchedProducts = [];
                 if (Array.isArray(data)) {
                     fetchedProducts = data;
+                    setPages(1);
                 } else if (data.products) {
                     fetchedProducts = data.products;
                     setPages(data.pages);
@@ -48,7 +64,7 @@ const ProductList = () => {
             }
         };
         fetchProducts();
-    }, [keyword, pageNumber]);
+    }, [keyword, pageNumber, selectedCategories, priceRange, sortOption, minRating, onlyInStock]);
 
     // Update selected categories when URL param or query param changes
     useEffect(() => {
@@ -60,41 +76,13 @@ const ProductList = () => {
         }
     }, [category, queryCategory]);
 
-    // Filter products logic
+    // client-side redundant filters removed for performance and correctness
+    // filteredProducts now always reflects exactly what the server says belongs on this page.
+
+    // Reset to page 1 when filters or sorting changes
     useEffect(() => {
-        let result = products;
-
-        // Category Filter
-        if (selectedCategories.length > 0) {
-            result = result.filter(p => selectedCategories.includes(p.category.toLowerCase()));
-        }
-
-        // Price Filter
-        result = result.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
-
-        // Rating Filter
-        if (minRating > 0) {
-            result = result.filter(p => (p.rating || 0) >= minRating);
-        }
-
-        // Stock Filter
-        if (onlyInStock) {
-            result = result.filter(p => (p.countInStock || 0) > 0);
-        }
-
-        // Sorting
-        if (sortOption === 'lowToHigh') {
-            result.sort((a, b) => a.price - b.price);
-        } else if (sortOption === 'highToLow') {
-            result.sort((a, b) => b.price - a.price);
-        } else if (sortOption === 'rating') {
-            result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        } else if (sortOption === 'newest') {
-            result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        }
-
-        setFilteredProducts([...result]);
-    }, [selectedCategories, priceRange, sortOption, category, products, minRating, onlyInStock]);
+        setPageNumber(1);
+    }, [keyword, selectedCategories, priceRange, sortOption, minRating, onlyInStock]);
 
     const toggleCategory = (cat) => {
         const lowerCat = cat.toLowerCase();
@@ -107,13 +95,14 @@ const ProductList = () => {
     };
 
     const allCategories = useMemo(() => {
-        const uniqueLower = [...new Set(products.map(p => p.category.toLowerCase()))];
-        // Map back to the original capitalization if possible, or just capitalize properly
+        if (categoriesList.length > 0) return categoriesList.map(c => c.name);
+        // Fallback to product categories if list not loaded
+        const uniqueLower = [...new Set(products.map(p => (p.category || '').toLowerCase()))].filter(Boolean);
         return uniqueLower.map(lower => {
-            const original = products.find(p => p.category.toLowerCase() === lower)?.category;
+            const original = products.find(p => p.category?.toLowerCase() === lower)?.category;
             return original || lower;
         });
-    }, [products]);
+    }, [categoriesList, products]);
 
     if (loading) {
         return (
@@ -130,26 +119,49 @@ const ProductList = () => {
             <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
                 <div className="flex flex-col md:flex-row gap-8">
 
-                    {/* Mobile Filter Toggle */}
-                    <div className="md:hidden flex justify-between items-center mb-4">
+                    <div className="md:hidden flex justify-between items-center mb-6">
                         <h1 className="text-2xl font-bold capitalize text-slate-900 dark:text-white">{category || 'All Products'}</h1>
                         <button
-                            onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
-                            className="p-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200"
+                            onClick={() => setIsMobileFilterOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20 transition-all active:scale-95"
                         >
-                            <Filter className="h-4 w-4" /> Filters
+                            <Filter className="h-4 w-4" />
+                            <span className="font-semibold text-sm">Filters</span>
                         </button>
                     </div>
 
                     {/* Sidebar Filters */}
                     <div className={`
-            md:w-64 flex-shrink-0 space-y-8
-            ${isMobileFilterOpen ? 'block' : 'hidden md:block'}
-          `}>
+                        ${isSidebarVisible ? 'md:w-64' : 'md:w-0 md:opacity-0 md:pointer-events-none'}
+                        flex-shrink-0 space-y-8
+                        ${isMobileFilterOpen ? 'fixed inset-0 z-50 bg-white dark:bg-slate-900 p-6 overflow-y-auto translate-x-0' : 'hidden md:block -translate-x-full md:translate-x-0'}
+                        transition-all duration-300 ease-in-out
+                    `}>
+                        {isMobileFilterOpen && (
+                            <button
+                                onClick={() => setIsMobileFilterOpen(false)}
+                                className="md:hidden absolute top-4 right-4 p-2.5 bg-gray-100 dark:bg-slate-800 rounded-full text-slate-900 dark:text-white shadow-sm active:scale-95 transition-all"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        )}
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 sticky top-24 transition-colors">
-                            <div className="flex items-center gap-2 mb-6 text-slate-900 dark:text-white">
-                                <SlidersHorizontal className="h-5 w-5" />
-                                <h2 className="font-bold text-lg">Filters</h2>
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-2 text-slate-900 dark:text-white">
+                                    <SlidersHorizontal className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                    <h2 className="font-bold text-lg text-slate-900 dark:text-white">Filters</h2>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setSelectedCategories([]);
+                                        setPriceRange([0, 5000]);
+                                        setMinRating(0);
+                                        setOnlyInStock(false);
+                                    }}
+                                    className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors uppercase tracking-wider"
+                                >
+                                    Reset
+                                </button>
                             </div>
 
                             {/* Categories */}
@@ -238,13 +250,32 @@ const ProductList = () => {
                                     <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">In Stock Only</span>
                                 </label>
                             </div>
+
+                            {/* Mobile Apply Button */}
+                            {isMobileFilterOpen && (
+                                <button
+                                    onClick={() => setIsMobileFilterOpen(false)}
+                                    className="md:hidden mt-8 w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20 active:scale-95 transition-all"
+                                >
+                                    Apply Filters
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     {/* Product Grid */}
-                    <div className="flex-1">
-                        <div className="flex justify-between items-center mb-6 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 transition-colors">
-                            <p className="text-gray-500 dark:text-gray-400">Showing <span className="font-bold text-slate-900 dark:text-white">{filteredProducts.length}</span> products</p>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap justify-between items-center gap-4 mb-6 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 transition-colors">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => isMobileFilterOpen ? setIsMobileFilterOpen(false) : (window.innerWidth < 768 ? setIsMobileFilterOpen(true) : setIsSidebarVisible(!isSidebarVisible))}
+                                    className="hidden md:flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-600 transition-all"
+                                >
+                                    <Filter className="h-4 w-4" />
+                                    <span>{isSidebarVisible ? 'Hide Filters' : 'Show Filters'}</span>
+                                </button>
+                                <p className="text-gray-500 dark:text-gray-400">Showing <span className="font-bold text-slate-900 dark:text-white">{filteredProducts.length}</span> products</p>
+                            </div>
 
                             <div className="flex items-center gap-2">
                                 <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">Sort by:</span>
@@ -253,6 +284,7 @@ const ProductList = () => {
                                     onChange={(e) => setSortOption(e.target.value)}
                                     className="px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 dark:text-slate-200 cursor-pointer"
                                 >
+                                    <option value="bestSelling">Best Selling</option>
                                     <option value="newest">Newest Arrivals</option>
                                     <option value="lowToHigh">Price: Low to High</option>
                                     <option value="highToLow">Price: High to Low</option>
@@ -262,7 +294,7 @@ const ProductList = () => {
                         </div>
 
                         {filteredProducts.length > 0 ? (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-x-6 md:gap-y-10">
                                 <AnimatePresence>
                                     {filteredProducts.map(product => (
                                         <ProductCard key={product._id} product={product} />
@@ -280,39 +312,62 @@ const ProductList = () => {
                                 </button>
                             </div>
                         )}
-                    </div>
+                        {/* Pagination Controls */}
+                        {pages > 1 && (
+                            <div className="flex justify-center items-center mt-16 gap-3">
+                                <button
+                                    onClick={() => {
+                                        setPageNumber(p => Math.max(1, p - 1));
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
+                                    disabled={pageNumber === 1}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:border-indigo-500 dark:hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all shadow-sm"
+                                >
+                                    Previous
+                                </button>
 
-                    {/* Pagination Controls */}
-                    {pages > 1 && (
-                        <div className="flex justify-center mt-12 gap-2">
-                            <button
-                                onClick={() => {
-                                    setPageNumber(p => Math.max(1, p - 1));
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }}
-                                disabled={pageNumber === 1}
-                                className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                            >
-                                Previous
-                            </button>
-                            <span className="flex items-center px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">
-                                Page {pageNumber} of {pages}
-                            </span>
-                            <button
-                                onClick={() => {
-                                    setPageNumber(p => Math.min(pages, p + 1));
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }}
-                                disabled={pageNumber === pages}
-                                className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                            >
-                                Next
-                            </button>
-                        </div>
-                    )}
+                                <div className="flex items-center gap-1">
+                                    {[...Array(pages).keys()].map((p) => {
+                                        const pg = p + 1;
+                                        if (pg === 1 || pg === pages || (pg >= pageNumber - 1 && pg <= pageNumber + 1)) {
+                                            return (
+                                                <button
+                                                    key={pg}
+                                                    onClick={() => {
+                                                        setPageNumber(pg);
+                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                    }}
+                                                    className={`w-10 h-10 flex items-center justify-center rounded-xl text-sm font-bold transition-all ${pageNumber === pg
+                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20'
+                                                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-gray-100 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-400'
+                                                        }`}
+                                                >
+                                                    {pg}
+                                                </button>
+                                            );
+                                        }
+                                        if (pg === pageNumber - 2 || pg === pageNumber + 2) {
+                                            return <span key={pg} className="px-1 text-gray-400">...</span>;
+                                        }
+                                        return null;
+                                    })}
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        setPageNumber(p => Math.min(pages, p + 1));
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
+                                    disabled={pageNumber === pages}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:border-indigo-500 dark:hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all shadow-sm"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </main>
-
             <Footer />
         </div>
     );

@@ -13,7 +13,11 @@ const OrderList = () => {
         const fetchOrders = async () => {
             try {
                 const { data } = await api.get('/orders/myorders');
-                const sortedData = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                // Handle both paginated response { orders, page, pages, total } and legacy flat array
+                const orderList = data.orders || data;
+                const sortedData = Array.isArray(orderList)
+                    ? orderList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    : [];
                 setOrders(sortedData);
             } catch (error) {
                 console.error("Failed to fetch orders", error);

@@ -477,12 +477,7 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
                 >
                     <ExternalLink className="h-4 w-4" /> Gateways
                 </button>
-                <button
-                    onClick={() => { setActiveTab('card'); setError(null); }}
-                    className={`flex-1 min-w-[80px] flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'card' ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-                >
-                    <CreditCard className="h-4 w-4" /> Card
-                </button>
+
                 {isCodAvailable && (
                     <button
                         onClick={() => { setActiveTab('cod'); setError(null); }}
@@ -531,43 +526,6 @@ const CheckoutForm = ({ cart, user, total, itemsPrice, taxPrice, shippingPrice, 
                         className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {loading ? 'Opening Payment...' : `Pay ₹${total}`}
-                    </button>
-                </form>
-            ) : activeTab === 'card' ? (
-                <form onSubmit={handleCardPayment} className="space-y-6 fade-in">
-                    <div className="p-4 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50/50 dark:bg-slate-700/30">
-                        <div className="flex items-center gap-2 mb-4 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            <Lock className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                            Secure Credit Card Payment
-                        </div>
-                        <div className="p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-sm">
-                            <CardElement options={{
-                                style: {
-                                    base: {
-                                        color: "#32325d", // Keeping default for now as dynamic theme switching for Stripe requires context
-                                        fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
-                                        fontSmoothing: "antialiased",
-                                        fontSize: "16px",
-                                        "::placeholder": { color: "#aab7c4" }
-                                    },
-                                    invalid: { color: "#fa755a", iconColor: "#fa755a" }
-                                }
-                            }} />
-                        </div>
-                    </div>
-
-                    {error && (
-                        <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-sm rounded-lg border border-red-100 dark:border-red-900">
-                            {error}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={!stripe || loading}
-                        className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                        {loading ? 'Processing...' : `Pay ₹${finalTotal}`}
                     </button>
                 </form>
             ) : activeTab === 'cod' ? (

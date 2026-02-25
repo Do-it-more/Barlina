@@ -16,7 +16,8 @@ import {
     AlertTriangle,
     Bell,
     Shield,
-    MessageSquare
+    MessageSquare,
+    IndianRupee
 } from 'lucide-react';
 import NotificationDropdown from '../../components/common/NotificationDropdown';
 import { useAuth } from '../../context/AuthContext';
@@ -43,6 +44,7 @@ const SellerManagementLayoutContent = () => {
 
         { path: '/seller-management/all-products', icon: Package, label: 'All Products' },
         { path: '/seller-management/support-tickets', icon: MessageSquare, label: 'Support Tickets' },
+        { path: '/seller-management/settlement-commission', icon: IndianRupee, label: 'Settlement & Commission' },
         // Only Super Admin sees Team Chat in this view, Seller Admin doesn't need it unless specified
         ...(user?.role === 'super_admin' ? [{ path: '/seller-management/team-chat', icon: MessageSquare, label: 'Team Chat' }] : []),
     ];

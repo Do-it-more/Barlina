@@ -2,11 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, Bot, User, Minimize2, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { useSettings } from '../context/SettingsContext';
 
 const ChatBot = () => {
+    const { settings } = useSettings();
+    const companyName = settings?.companyName?.split(' ')[0] || 'Shop';
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
-        { id: 1, text: "Hi there! 👋 I'm your Barlina AI assistant. How can I help you today?", sender: 'bot' }
+        { id: 1, text: `Hi there! 👋 I'm your ${companyName} AI assistant. How can I help you today?`, sender: 'bot' }
     ]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -93,7 +96,7 @@ const ChatBot = () => {
                                     <Bot className="h-6 w-6 text-white" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-white text-lg leading-tight">Barlina AI</h3>
+                                    <h3 className="font-bold text-white text-lg leading-tight">{companyName} AI</h3>
                                     <p className="text-indigo-100 text-xs flex items-center gap-1">
                                         <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                                         Online

@@ -14,7 +14,8 @@ import {
     Package,
     ShoppingBag,
     MessageSquare,
-    Settings
+    Settings,
+    Wallet
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -86,6 +87,7 @@ const SellerLayout = () => {
         { path: '/seller/profile', icon: User, label: 'Business Profile' },
         { path: '/seller/kyc', icon: ShieldCheck, label: 'KYC & Compliance' },
         { path: '/seller/bank', icon: CreditCard, label: 'Bank & Settlements' },
+        { path: '/seller/finance', icon: Wallet, label: 'Earnings & Finance' },
         { path: '/seller/products', icon: Package, label: 'Products', disabled: false },
         { path: '/seller/orders', icon: ShoppingBag, label: 'Orders', disabled: false },
         ...(sellerProfile?.isChatEnabled === true ? [{ path: '/seller/team-chat', icon: MessageSquare, label: 'Team Chat' }] : []),

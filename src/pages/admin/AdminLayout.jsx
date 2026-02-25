@@ -30,7 +30,8 @@ import {
     Activity,
     Wallet,
     Store,
-    FileCheck
+    FileCheck,
+    Banknote
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -136,6 +137,7 @@ const AdminLayoutContent = () => {
     ];
 
     const superAdminItems = [
+        { path: '/admin/settlements', icon: Banknote, label: 'Settlements' },
         { path: '/admin/management/permissions', icon: ShieldCheck, label: 'RBAC Settings' },
         { path: '/admin/management/approvals', icon: CheckSquare, label: 'Approvals' },
         { path: '/admin/management/activity', icon: Activity, label: 'Activity Logs' },

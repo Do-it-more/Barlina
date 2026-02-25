@@ -18,6 +18,7 @@ import {
     Clock,
     Trash2
 } from 'lucide-react';
+import { getImageUrl } from '../../utils/image';
 
 const ActiveSellers = () => {
     const { showToast } = useToast();
@@ -157,9 +158,13 @@ const ActiveSellers = () => {
                                 <div className="flex justify-between items-start mb-4">
                                     {seller.kyc?.sellerPhotoUrl ? (
                                         <img
-                                            src={seller.kyc.sellerPhotoUrl}
+                                            src={getImageUrl(seller.kyc.sellerPhotoUrl)}
                                             alt={seller.businessName}
                                             className="w-12 h-12 rounded-full object-cover border border-gray-100 dark:border-slate-600"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = 'https://via.placeholder.com/150?text=Seller';
+                                            }}
                                         />
                                     ) : (
                                         <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold text-xl uppercase">

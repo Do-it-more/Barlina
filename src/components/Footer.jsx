@@ -17,6 +17,8 @@ const Footer = () => {
     const companyPhone = settings?.companyPhone || '+91 88256 35443';
     const companyEmail = settings?.companyEmail || 'support@barlinafashion.com';
 
+    const companyTagline = settings?.companyTagline || 'Discover the latest trends in tech and lifestyle. Quality products, premium service, and fast delivery guaranteed.';
+
     return (
         <footer className="bg-white dark:bg-slate-900 pt-16 pb-24 md:pb-8 border-t border-gray-100 dark:border-slate-800 transition-colors duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -29,12 +31,12 @@ const Footer = () => {
                                     {companyName.split(' ')[0].toUpperCase()}
                                 </span>
                                 <span className="text-[10px] md:text-xs tracking-[0.4em] font-light lowercase text-gray-500 dark:text-gray-400 mt-1 w-full text-center">
-                                    {companyName.substring(companyName.indexOf(' ') + 1) || 'fashion design'}
+                                    {companyName.includes(' ') ? companyName.substring(companyName.indexOf(' ') + 1) : ''}
                                 </span>
                             </div>
                         </Link>
                         <p className="text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
-                            Discover the latest trends in tech and lifestyle. Quality products, premium service, and fast delivery guaranteed.
+                            {companyTagline}
                         </p>
                         <div className="flex space-x-4 mb-8 md:mb-0">
                             {/* Social icons removed */}

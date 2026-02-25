@@ -1,8 +1,12 @@
 import React, { useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { useSettings } from '../context/SettingsContext';
 
 const PrivacyPolicy = () => {
+    const { settings } = useSettings();
+    const companyName = settings?.companyName || 'Our Company';
+    const companyEmail = settings?.companyEmail || 'support@example.com';
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
@@ -15,7 +19,7 @@ const PrivacyPolicy = () => {
 
                 <div className="prose prose-lg dark:prose-invert max-w-none text-gray-600 dark:text-gray-300">
                     <p className="lead text-xl mb-8">
-                        At Barlina Fashion, we value your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, and safeguard your data.
+                        At {companyName}, we value your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, and safeguard your data.
                     </p>
 
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white mt-8 mb-4">1. Information We Collect</h2>
@@ -54,7 +58,7 @@ const PrivacyPolicy = () => {
 
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white mt-8 mb-4">6. Your Rights</h2>
                     <p className="mb-6">
-                        You have the right to access, correct, or delete your personal information. If you wish to exercise these rights, please contact us at support@barlinafashion.com.
+                        You have the right to access, correct, or delete your personal information. If you wish to exercise these rights, please contact us at {companyEmail}.
                     </p>
 
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white mt-8 mb-4">7. Changes to This Policy</h2>

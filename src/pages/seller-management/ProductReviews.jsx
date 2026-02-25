@@ -37,6 +37,7 @@ const ProductReviews = () => {
     const [filters, setFilters] = useState({
         status: isAllProductsView ? 'all' : 'UNDER_REVIEW',
         category: '',
+        ownerType: 'all',
         search: '',
         page: 1
     });
@@ -72,7 +73,7 @@ const ProductReviews = () => {
     useEffect(() => {
         fetchProducts();
         fetchStats();
-    }, [filters.status, filters.page]);
+    }, [filters.status, filters.page, filters.category, filters.ownerType]);
 
     useEffect(() => {
         setPreviewImage(null);
@@ -84,6 +85,7 @@ const ProductReviews = () => {
             const query = new URLSearchParams();
             if (filters.status) query.append('status', filters.status);
             if (filters.category) query.append('category', filters.category);
+            if (filters.ownerType && filters.ownerType !== 'all') query.append('ownerType', filters.ownerType);
             if (filters.search) query.append('search', filters.search);
             query.append('page', filters.page);
             query.append('limit', 12);
@@ -483,6 +485,17 @@ const ProductReviews = () => {
                             {categories.map((cat) => (
                                 <option key={cat._id} value={cat.name}>{cat.name}</option>
                             ))}
+                        </select>
+
+                        {/* Owner Type Filter */}
+                        <select
+                            value={filters.ownerType}
+                            onChange={(e) => setFilters({ ...filters, ownerType: e.target.value, page: 1 })}
+                            className="px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                        >
+                            <option value="all">All Sources</option>
+                            <option value="PLATFORM">Platform</option>
+                            <option value="SELLER">Seller</option>
                         </select>
                     </div>
                 </div>

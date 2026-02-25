@@ -23,7 +23,8 @@ const OrderListScreen = () => {
         try {
             setLoading(true);
             const { data } = await api.get('/orders');
-            setOrders(data);
+            // Handle both paginated response { orders, page, pages, total } and legacy flat array
+            setOrders(data.orders || data);
         } catch (error) {
             console.error("Failed to fetch orders", error);
         } finally {

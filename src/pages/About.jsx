@@ -2,8 +2,11 @@ import React from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { Award, Users, Globe, Heart } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
 
 const About = () => {
+    const { settings } = useSettings();
+    const companyName = settings?.companyName || 'Our Company';
     return (
         <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900 transition-colors duration-300">
             <Navbar />
@@ -13,7 +16,7 @@ const About = () => {
                 <section className="relative py-20 bg-indigo-50 dark:bg-slate-800 overflow-hidden">
                     <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-300/20 rounded-full blur-[100px] translate-x-1/2 -translate-y-1/2"></div>
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-                        <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-6">About Barlina Fashion Design</h1>
+                        <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-6">About {companyName}</h1>
                         <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
                             We are on a mission to bring premium lifestyle products to your doorstep.
                             Quality, transparency, and customer satisfaction are at the heart of everything we do.
@@ -35,7 +38,7 @@ const About = () => {
                             <div className="space-y-6">
                                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Our Story</h2>
                                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                                    Founded in 2024, Barlina Fashion Design started with a simple idea: technology and lifestyle accessories should be both beautiful and functional.
+                                    Founded in 2024, {companyName} started with a simple idea: technology and lifestyle accessories should be both beautiful and functional.
                                     What began as a small curated collection has grown into a diverse marketplace loved by thousands.
                                 </p>
                                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">

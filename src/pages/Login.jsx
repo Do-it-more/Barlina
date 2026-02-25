@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Loader, Eye, EyeOff } from 'lucide-react';
 
@@ -78,7 +79,13 @@ const Login = () => {
     const [resendTimer, setResendTimer] = useState(30);
 
     const { login, verifyTwoFactorLogin, resendTwoFactorLogin } = useAuth();
+    const { settings } = useSettings();
     const navigate = useNavigate();
+
+    const companyName = settings?.companyName || 'BARLINA fashion design';
+    const splitName = companyName.indexOf(' ');
+    const firstWord = splitName !== -1 ? companyName.substring(0, splitName) : companyName;
+    const restOfName = splitName !== -1 ? companyName.substring(splitName + 1) : 'fashion design';
 
     // Timer Effect
     useEffect(() => {
@@ -147,10 +154,10 @@ const Login = () => {
                 <div className="text-center mb-10">
                     <Link to="/" className="inline-flex flex-col items-center justify-center mb-6 group">
                         <span className="font-serif text-3xl md:text-4xl tracking-[0.15em] font-bold text-slate-900 dark:text-white leading-none" style={{ fontFamily: '"Playfair Display", serif' }}>
-                            BARLINA
+                            {firstWord.toUpperCase()}
                         </span>
                         <span className="text-xs md:text-sm tracking-[0.4em] font-light lowercase text-gray-500 dark:text-gray-400 mt-2">
-                            fashion design
+                            {restOfName}
                         </span>
                     </Link>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome Back</h2>

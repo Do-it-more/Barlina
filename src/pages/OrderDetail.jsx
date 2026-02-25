@@ -8,12 +8,14 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { Check, Truck, Package, MapPin, CreditCard, Calendar, ArrowLeft, Printer, AlertCircle, X, Star, XCircle, FileText, RotateCcw, Image as ImagePlus, Video, Trash2, CheckCircle } from 'lucide-react';
 import Barcode from 'react-barcode';
+import { useSettings } from '../context/SettingsContext';
 
 const OrderDetail = () => {
     const { id } = useParams();
     const { user } = useAuth();
     const { showToast } = useToast();
     const { confirm } = useConfirm();
+    const { settings: companySettings } = useSettings();
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -91,7 +93,6 @@ const OrderDetail = () => {
         const isConfirmed = await confirm('Cancel Order', 'Are you sure you want to cancel this order? This action cannot be undone.');
         if (isConfirmed) {
             try {
-                await api.put(`/orders/${id}/cancel`);
                 await api.put(`/orders/${id}/cancel`);
                 fetchOrderData(); // Refresh order details
                 showToast('Order cancelled successfully.', 'success');
@@ -412,7 +413,7 @@ const OrderDetail = () => {
                             <p className="text-gray-600">Order Ref: <span className="font-mono text-gray-400">#{order.invoiceNumber || order._id}</span></p>
                             <p className="text-gray-600">Date: <span className="font-medium text-slate-900">{new Date(order.createdAt).toLocaleDateString()}</span></p>
                             <div className="mt-4">
-                                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Billed To:</p>
+                                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Billed To:</p>
                                 <p className="font-bold text-slate-900">{order.user.name}</p>
                                 <p className="text-sm text-gray-600">{order.user.email}</p>
                                 <p className="text-sm text-gray-600">{order.user.phoneNumber}</p>
@@ -423,11 +424,14 @@ const OrderDetail = () => {
                             </div>
                         </div>
                         <div className="text-right">
-                            <h2 className="text-xl font-bold text-indigo-600 mb-1">Barlina Fashion</h2>
+                            <h2 className="text-xl font-bold text-indigo-600 mb-1">{companySettings.companyName || 'Barlina Fashion'}</h2>
                             <div className="text-sm text-gray-500 space-y-0.5">
-                                <p>123 Fashion Street, T. Nagar</p>
-                                <p>Chennai, Tamil Nadu 600017</p>
-                                <p>Phone: +91 98765 43210</p>
+                                {companySettings.companyAddress?.street && <p>{companySettings.companyAddress.street}</p>}
+                                {(companySettings.companyAddress?.city || companySettings.companyAddress?.state) && (
+                                    <p>{[companySettings.companyAddress.city, companySettings.companyAddress.state, companySettings.companyAddress.zip].filter(Boolean).join(', ')}</p>
+                                )}
+                                <p>Phone: {companySettings.companyPhone || '+91 98765 43210'}</p>
+                                {companySettings.companyGST && <p className="text-xs text-gray-400">GSTIN: {companySettings.companyGST}</p>}
                             </div>
                         </div>
                     </div>
@@ -492,8 +496,6 @@ const OrderDetail = () => {
                                     defaultValue={order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : ''}
                                     onChange={async (e) => {
                                         try {
-                                            await api.put(`/orders/${order._id}/delivery-date`, { date: e.target.value });
-                                            showToast('Delivery date updated', 'success');
                                             await api.put(`/orders/${order._id}/delivery-date`, { date: e.target.value });
                                             showToast('Delivery date updated', 'success');
                                             fetchOrderData();

@@ -134,11 +134,11 @@ const Home = () => {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center max-w-2xl mx-auto mb-16">
                             <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm tracking-uppercase mb-2 block">Top Selection</span>
-                            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">Featured Products</h2>
-                            <p className="text-gray-500 dark:text-gray-400">Hand-picked products just for you. Get the best quality at the best price.</p>
+                            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">Most Popular</h2>
+                            <p className="text-gray-500 dark:text-gray-400">Our best-selling products that customers love the most. Quality guaranteed.</p>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
                             {products.length > 0 ? products.map((product) => (
                                 <ProductCard key={product._id} product={product} />
                             )) : (

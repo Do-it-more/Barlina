@@ -32,6 +32,7 @@ import SellerProfile from './pages/seller/SellerProfile';
 import SellerKYC from './pages/seller/SellerKYC';
 import SellerBank from './pages/seller/SellerBank';
 import SellerSupport from './pages/seller/SellerSupport';
+import SellerFinanceDashboard from './pages/seller/SellerFinanceDashboard';
 
 // Finance Components
 import FinanceLayout from './pages/finance/FinanceLayout';
@@ -49,6 +50,7 @@ import ProductReviews from './pages/seller-management/ProductReviews';
 import ActiveSellers from './pages/seller-management/ActiveSellers';
 import AuditLogs from './pages/seller-management/AuditLogs';
 import AdminSupportTickets from './pages/seller-management/SupportTickets';
+import SettlementCommission from './pages/seller-management/SettlementCommission';
 
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -92,6 +94,7 @@ const TeamChatScreen = React.lazy(() => import('./pages/admin/TeamChatScreen'));
 const SellerListScreen = React.lazy(() => import('./pages/admin/SellerListScreen'));
 const SellerDetailScreen = React.lazy(() => import('./pages/admin/SellerDetailScreen'));
 const ProductReviewScreen = React.lazy(() => import('./pages/admin/ProductReviewScreen'));
+const AdminSettlementManagement = React.lazy(() => import('./pages/admin/AdminSettlementManagement'));
 import ChatBot from './components/ChatBot';
 import MobileBottomNav from './components/MobileBottomNav';
 
@@ -177,20 +180,9 @@ function App() {
                         <Route path="/contact" element={<Contact />} />
 
                         {/* Public Shop Routes */}
-
-
-
-
-
-                        <Route path="/about" element={<About />} />
-                        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-
-
-
-
-
-
-                      // ... existing code ...
+                        <Route path="/products" element={<ProductList />} />
+                        <Route path="/category/:category" element={<ProductList />} />
+                        <Route path="/product/:id" element={<ProductDetail />} />
 
                         <Route path="/about" element={<About />} />
                         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -201,12 +193,8 @@ function App() {
                         <Route path="/legal/seller-privacy" element={<SellerPrivacy />} />
                         <Route path="/legal/marketplace-guidelines" element={<MarketplaceGuidelines />} />
 
-
-                        {/* Protected Routes */}
+                        {/* Protected Routes (Require Login) */}
                         <Route element={<ProtectedRoute />}>
-                          <Route path="/products" element={<ProductList />} />
-                          <Route path="/category/:category" element={<ProductList />} />
-                          <Route path="/product/:id" element={<ProductDetail />} />
                           <Route path="/cart" element={<Cart />} />
                           <Route path="/wishlist" element={<Wishlist />} />
                           <Route path="/checkout" element={<Checkout />} />
@@ -257,6 +245,9 @@ function App() {
 
                             {/* Product Review Routes */}
                             <Route path="product-reviews" element={<ProductReviewScreen />} />
+
+                            {/* Settlement Management */}
+                            <Route path="settlements" element={<AdminSettlementManagement />} />
                           </Route>
                           <Route path="/admin/change-password" element={
                             <React.Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
@@ -291,6 +282,7 @@ function App() {
                           <Route path="kyc" element={<SellerKYC />} />
                           <Route path="bank" element={<SellerBank />} />
                           <Route path="support" element={<SellerSupport />} />
+                          <Route path="finance" element={<SellerFinanceDashboard />} />
                           <Route path="team-chat" element={
                             <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
                               <TeamChatScreen />
@@ -336,6 +328,7 @@ function App() {
                           <Route path="all-products" element={<ProductReviews />} />
                           <Route path="audit-logs" element={<AuditLogs />} />
                           <Route path="support-tickets" element={<AdminSupportTickets />} />
+                          <Route path="settlement-commission" element={<SettlementCommission />} />
                           <Route path="team-chat" element={
                             <React.Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
                               <TeamChatScreen />

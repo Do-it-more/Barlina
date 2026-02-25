@@ -25,6 +25,7 @@ const Checkout = () => {
     const { settings } = useSettings();
     const [isOrderPlaced, setIsOrderPlaced] = useState(false);
     const [form, setForm] = useState({
+        doorNumber: '',
         address: '',
         address2: '',
         city: '',
@@ -40,6 +41,7 @@ const Checkout = () => {
 
     const handleSelectAddress = (address) => {
         setForm({
+            doorNumber: address.doorNumber || '',
             address: address.street,
             address2: address.addressLine2 || '',
             city: address.city,
@@ -297,6 +299,17 @@ const Checkout = () => {
                                     </div>
                                 )}
                                 <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Door / Flat No.</label>
+                                        <input
+                                            name="doorNumber"
+                                            value={form.doorNumber}
+                                            onChange={handleChange}
+                                            type="text"
+                                            placeholder="e.g. 12A, Flat 301, House No. 5"
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:text-white"
+                                        />
+                                    </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Address Line 1</label>
                                         <input

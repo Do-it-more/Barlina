@@ -130,7 +130,21 @@ const Profile = () => {
     };
 
     const handleDeleteAccount = async () => {
-        const isConfirmed = await confirm('Delete Account', "Are you sure you want to permanently delete your account? This action cannot be undone.");
+        // Fetch current wallet balance to show in warning
+        let walletWarning = '';
+        try {
+            const { data } = await api.get('/wallet');
+            if (data.balance > 0) {
+                walletWarning = `\n\n⚠️ You have ₹${data.balance.toFixed(2)} in your wallet. This amount will be lost if you delete your account. Please spend or withdraw it first.`;
+            }
+        } catch (e) {
+            // Wallet API failed, proceed anyway — backend will block if needed
+        }
+
+        const isConfirmed = await confirm(
+            'Delete Account',
+            `Are you sure you want to permanently delete your account? This action cannot be undone.${walletWarning}`
+        );
         if (isConfirmed) {
             try {
                 await api.delete('/users/profile');
@@ -188,7 +202,9 @@ const Profile = () => {
                 api.get('/orders/myorders')
             ]);
             setComplaints(complaintsRes.data);
-            setOrders(ordersRes.data);
+            // Handle both paginated response { orders, page, pages, total } and legacy flat array
+            const orderList = ordersRes.data.orders || ordersRes.data;
+            setOrders(Array.isArray(orderList) ? orderList : []);
         } catch (error) {
             console.error("Failed to fetch data", error);
         } finally {

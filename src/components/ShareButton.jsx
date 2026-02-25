@@ -13,6 +13,7 @@ import {
     Link2
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useSettings } from '../context/SettingsContext';
 
 const ShareButton = ({
     product,
@@ -24,12 +25,15 @@ const ShareButton = ({
     const dropdownRef = useRef(null);
     const { showToast } = useToast();
 
+    const { settings } = useSettings();
+    const storeName = settings?.companyName || 'our store';
+
     const shareUrl = typeof window !== 'undefined'
         ? `${window.location.origin}/product/${product._id}`
         : '';
 
     const shareTitle = product?.name || 'Check out this product!';
-    const shareText = product?.description?.substring(0, 100) || `Check out ${product?.name} on Barlina Fashion!`;
+    const shareText = product?.description?.substring(0, 100) || `Check out ${product?.name} on ${storeName}!`;
     const sharePrice = product?.discountPrice > 0 && product?.discountPrice < product?.price
         ? `₹${product.discountPrice.toLocaleString()}`
         : `₹${product?.price?.toLocaleString()}`;
@@ -206,8 +210,8 @@ const ShareButton = ({
                                     <button
                                         onClick={copyToClipboard}
                                         className={`flex-shrink-0 p-2.5 rounded-xl transition-all active:scale-95 ${copied
-                                                ? 'bg-green-500 text-white'
-                                                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                            ? 'bg-green-500 text-white'
+                                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
                                             }`}
                                     >
                                         {copied ? (

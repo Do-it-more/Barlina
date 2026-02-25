@@ -22,6 +22,7 @@ import {
     Calendar,
     ChevronRight
 } from 'lucide-react';
+import { getImageUrl } from '../../utils/image';
 
 const SellerApprovals = () => {
     const navigate = useNavigate();
@@ -200,9 +201,13 @@ const SellerApprovals = () => {
                                 {/* Avatar */}
                                 {seller.kyc?.sellerPhotoUrl ? (
                                     <img
-                                        src={seller.kyc.sellerPhotoUrl}
+                                        src={getImageUrl(seller.kyc.sellerPhotoUrl)}
                                         alt={seller.businessName}
                                         className="w-14 h-14 rounded-xl object-cover border border-gray-100 dark:border-slate-600 flex-shrink-0"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = 'https://via.placeholder.com/150?text=Seller';
+                                        }}
                                     />
                                 ) : (
                                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">

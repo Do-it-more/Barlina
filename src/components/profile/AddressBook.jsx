@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, MapPin, Edit2, Trash2, Check, X } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const AddressBook = ({ onSelect, selectedId }) => {
     const [addresses, setAddresses] = useState([]);
@@ -9,6 +10,7 @@ const AddressBook = ({ onSelect, selectedId }) => {
     const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({
         label: 'Home',
+        doorNumber: '',
         street: '',
         city: '',
         state: '',
@@ -18,6 +20,7 @@ const AddressBook = ({ onSelect, selectedId }) => {
         isDefault: false
     });
     const { showToast } = useToast();
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchAddresses();
@@ -54,6 +57,7 @@ const AddressBook = ({ onSelect, selectedId }) => {
             setEditingId(null);
             setFormData({
                 label: 'Home',
+                doorNumber: '',
                 street: '',
                 city: '',
                 state: '',
@@ -71,6 +75,7 @@ const AddressBook = ({ onSelect, selectedId }) => {
     const handleEdit = (address) => {
         setFormData({
             label: address.label,
+            doorNumber: address.doorNumber || '',
             street: address.street,
             city: address.city,
             state: address.state,
@@ -84,7 +89,8 @@ const AddressBook = ({ onSelect, selectedId }) => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this address?')) return;
+        const isConfirmed = await confirm('Delete Address', 'Are you sure you want to delete this address?');
+        if (!isConfirmed) return;
         try {
             await api.delete(`/users/addresses/${id}`);
             showToast('Address deleted', 'success');
@@ -135,6 +141,17 @@ const AddressBook = ({ onSelect, selectedId }) => {
                                     onChange={handleInputChange}
                                     className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:ring-2 focus:ring-indigo-500"
                                     required
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Door / Flat No.</label>
+                                <input
+                                    type="text"
+                                    name="doorNumber"
+                                    value={formData.doorNumber}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g. 12A, Flat 301, House No. 5"
+                                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
                             <div className="md:col-span-2">
@@ -228,8 +245,8 @@ const AddressBook = ({ onSelect, selectedId }) => {
                             <div
                                 key={address._id}
                                 className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer group ${(selectedId === address._id) || (!selectedId && address.isDefault)
-                                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-500'
-                                        : 'border-transparent bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700'
+                                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-500'
+                                    : 'border-transparent bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700'
                                     }`}
                                 onClick={() => onSelect && onSelect(address)}
                             >
@@ -255,7 +272,7 @@ const AddressBook = ({ onSelect, selectedId }) => {
                                         </button>
                                     </div>
                                 </div>
-                                <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">{address.street}</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">{address.doorNumber ? `${address.doorNumber}, ` : ''}{address.street}</p>
                                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">{address.city}, {address.state} - {address.postalCode}</p>
                                 <p className="text-sm text-gray-600 dark:text-gray-300">{address.country}</p>
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-1">

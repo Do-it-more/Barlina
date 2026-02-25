@@ -15,7 +15,9 @@ export const SettingsProvider = ({ children }) => {
         companyAddress: {},
         companyGST: '',
         companyPAN: '',
-        currency: 'INR'
+        currency: 'INR',
+        isGlobalStockActive: true,
+        isStockCountVisible: true
     });
     const [loading, setLoading] = useState(true);
 

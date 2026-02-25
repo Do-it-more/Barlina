@@ -30,6 +30,7 @@ import {
     Percent,
     MessageSquare
 } from 'lucide-react';
+import { getImageUrl } from '../../utils/image';
 
 const SellerDetail = () => {
     const { id } = useParams();
@@ -197,9 +198,13 @@ const SellerDetail = () => {
                     <div className="flex items-center gap-4 flex-wrap">
                         {seller.kyc?.sellerPhotoUrl ? (
                             <img
-                                src={seller.kyc.sellerPhotoUrl}
+                                src={getImageUrl(seller.kyc.sellerPhotoUrl)}
                                 alt={seller.businessName}
                                 className="w-16 h-16 rounded-xl object-cover border border-gray-100 dark:border-slate-700"
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = 'https://via.placeholder.com/150?text=Seller';
+                                }}
                             />
                         ) : (
                             <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-white text-2xl font-bold">
@@ -529,7 +534,15 @@ const SellerDetail = () => {
                                     <div key={product._id} className="bg-white dark:bg-slate-700 border border-gray-100 dark:border-slate-600 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                                         <div className="relative aspect-square bg-gray-100 dark:bg-slate-800">
                                             {product.image ? (
-                                                <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                                                <img
+                                                    src={getImageUrl(product.image)}
+                                                    alt={product.name}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.src = 'https://via.placeholder.com/300?text=Product';
+                                                    }}
+                                                />
                                             ) : (
                                                 <div className="flex items-center justify-center h-full text-gray-400">
                                                     <Package className="h-8 w-8" />
@@ -578,7 +591,7 @@ const SellerDetail = () => {
                                         </div>
                                         <div className="flex gap-2">
                                             <a
-                                                href={seller.kyc.panUrl}
+                                                href={getImageUrl(seller.kyc.panUrl)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
@@ -586,7 +599,7 @@ const SellerDetail = () => {
                                                 <Eye className="h-4 w-4" /> View
                                             </a>
                                             <a
-                                                href={seller.kyc.panUrl}
+                                                href={getImageUrl(seller.kyc.panUrl)}
                                                 download
                                                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-700"
                                             >
@@ -606,7 +619,7 @@ const SellerDetail = () => {
                                         </div>
                                         <div className="flex gap-2">
                                             <a
-                                                href={seller.kyc.aadhaarUrl}
+                                                href={getImageUrl(seller.kyc.aadhaarUrl)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
@@ -614,7 +627,7 @@ const SellerDetail = () => {
                                                 <Eye className="h-4 w-4" /> View
                                             </a>
                                             <a
-                                                href={seller.kyc.aadhaarUrl}
+                                                href={getImageUrl(seller.kyc.aadhaarUrl)}
                                                 download
                                                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-700"
                                             >
@@ -634,7 +647,7 @@ const SellerDetail = () => {
                                         </div>
                                         <div className="flex gap-2">
                                             <a
-                                                href={seller.kyc.addressProofUrl}
+                                                href={getImageUrl(seller.kyc.addressProofUrl)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
@@ -642,7 +655,7 @@ const SellerDetail = () => {
                                                 <Eye className="h-4 w-4" /> View
                                             </a>
                                             <a
-                                                href={seller.kyc.addressProofUrl}
+                                                href={getImageUrl(seller.kyc.addressProofUrl)}
                                                 download
                                                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-700"
                                             >
@@ -662,7 +675,7 @@ const SellerDetail = () => {
                                         </div>
                                         <div className="flex gap-2">
                                             <a
-                                                href={seller.kyc.businessProofUrl}
+                                                href={getImageUrl(seller.kyc.businessProofUrl)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
@@ -670,7 +683,7 @@ const SellerDetail = () => {
                                                 <Eye className="h-4 w-4" /> View
                                             </a>
                                             <a
-                                                href={seller.kyc.businessProofUrl}
+                                                href={getImageUrl(seller.kyc.businessProofUrl)}
                                                 download
                                                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-700"
                                             >
@@ -690,7 +703,7 @@ const SellerDetail = () => {
                                         </div>
                                         <div className="flex gap-2">
                                             <a
-                                                href={seller.kyc.chequeUrl}
+                                                href={getImageUrl(seller.kyc.chequeUrl)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
@@ -698,7 +711,7 @@ const SellerDetail = () => {
                                                 <Eye className="h-4 w-4" /> View
                                             </a>
                                             <a
-                                                href={seller.kyc.chequeUrl}
+                                                href={getImageUrl(seller.kyc.chequeUrl)}
                                                 download
                                                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-700"
                                             >
@@ -718,7 +731,7 @@ const SellerDetail = () => {
                                         </div>
                                         <div className="flex gap-2">
                                             <a
-                                                href={seller.kyc.bankProofUrl}
+                                                href={getImageUrl(seller.kyc.bankProofUrl)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
@@ -726,7 +739,7 @@ const SellerDetail = () => {
                                                 <Eye className="h-4 w-4" /> View
                                             </a>
                                             <a
-                                                href={seller.kyc.bankProofUrl}
+                                                href={getImageUrl(seller.kyc.bankProofUrl)}
                                                 download
                                                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-700"
                                             >
@@ -746,7 +759,7 @@ const SellerDetail = () => {
                                         </div>
                                         <div className="flex gap-2">
                                             <a
-                                                href={seller.kyc.gstCertificateUrl}
+                                                href={getImageUrl(seller.kyc.gstCertificateUrl)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
@@ -754,7 +767,7 @@ const SellerDetail = () => {
                                                 <Eye className="h-4 w-4" /> View
                                             </a>
                                             <a
-                                                href={seller.kyc.gstCertificateUrl}
+                                                href={getImageUrl(seller.kyc.gstCertificateUrl)}
                                                 download
                                                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-700"
                                             >
@@ -768,9 +781,13 @@ const SellerDetail = () => {
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-500">
                                                 <img
-                                                    src={seller.kyc.sellerPhotoUrl}
+                                                    src={getImageUrl(seller.kyc.sellerPhotoUrl)}
                                                     alt="Seller"
                                                     className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.src = 'https://via.placeholder.com/150?text=Seller';
+                                                    }}
                                                 />
                                             </div>
                                             <div>
@@ -780,7 +797,7 @@ const SellerDetail = () => {
                                         </div>
                                         <div className="flex gap-2">
                                             <a
-                                                href={seller.kyc.sellerPhotoUrl}
+                                                href={getImageUrl(seller.kyc.sellerPhotoUrl)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
@@ -788,7 +805,7 @@ const SellerDetail = () => {
                                                 <Eye className="h-4 w-4" /> View
                                             </a>
                                             <a
-                                                href={seller.kyc.sellerPhotoUrl}
+                                                href={getImageUrl(seller.kyc.sellerPhotoUrl)}
                                                 download
                                                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-700"
                                             >
