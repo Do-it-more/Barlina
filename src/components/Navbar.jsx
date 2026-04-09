@@ -21,7 +21,7 @@ const Navbar = () => {
     const cartCount = getCartCount();
     const navigate = useNavigate();
 
-    const companyName = settings?.companyName || 'BARLINA fashion design';
+    const companyName = settings?.companyName || 'Shop Vibe';
     const splitName = companyName.indexOf(' ');
     const firstWord = splitName !== -1 ? companyName.substring(0, splitName) : companyName;
     const restOfName = splitName !== -1 ? companyName.substring(splitName + 1) : 'fashion design';
